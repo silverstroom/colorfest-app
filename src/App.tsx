@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import SectionDetail from "./pages/SectionDetail";
 import FestivalMap from "./pages/FestivalMap";
+import MyProgram from "./pages/MyProgram";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/section/:id" element={<SectionDetail />} />
             <Route path="/map" element={<FestivalMap />} />
+            <Route path="/my-program" element={<MyProgram />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
