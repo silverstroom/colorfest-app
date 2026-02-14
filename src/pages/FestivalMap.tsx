@@ -3,7 +3,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabaseFetch, supabaseUpdate } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, X, Music, Move, Save, Check } from "lucide-react";
+import { ArrowLeft, X, Music, Move, Save, Check, Pencil } from "lucide-react";
+import AdminEditButton from "@/components/AdminEditButton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import mapImage from "@/assets/mappa.png";
@@ -235,7 +236,10 @@ const FestivalMap = () => {
             </div>
           )}
         </div>
-        <h1 className="text-2xl font-black">Mappa del Festival</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-black">Mappa del Festival</h1>
+          <AdminEditButton tab="map" className="bg-white/10 text-white hover:bg-white/20" />
+        </div>
         <p className="text-sm text-primary-foreground/70">Lungomare Falcone e Borsellino - Riviera dei Tramonti</p>
         {editMode && (
           <p className="text-xs text-primary-foreground/50 mt-1">🔧 Trascina i marker per riposizionarli, poi salva</p>
