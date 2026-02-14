@@ -177,7 +177,7 @@ const SectionsManager = ({ token }: { token?: string }) => {
 const toSpotifyEmbed = (url: string): string | null => {
   if (!url) return null;
   if (url.includes("/embed/")) return url;
-  const match = url.match(/open\.spotify\.com\/(artist|track|album)\/([a-zA-Z0-9]+)/);
+  const match = url.match(/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:embed\/)?(artist|track|album)\/([a-zA-Z0-9]+)/);
   if (match) return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
   return null;
 };
