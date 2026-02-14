@@ -3,7 +3,7 @@ import { supabaseFetch } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera, Palette, Star } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera, Palette, Star, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
 import NotificationBell from "@/components/NotificationBell";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +44,7 @@ interface Event {
   day: number;
   section_id: string;
   featured: boolean;
+  sort_order: number;
 }
 
 interface AppSetting {
@@ -96,7 +97,7 @@ const Index = () => {
       if (eventsData) {
         const all = eventsData as Event[];
         setAllEvents(all);
-        setFeaturedEvents(all.filter((e) => e.featured));
+        setFeaturedEvents(all.filter((e) => e.featured).sort((a, b) => a.sort_order - b.sort_order));
       }
     } catch (err) {
       console.error("[Index] Fetch error:", err);
@@ -180,13 +181,32 @@ const Index = () => {
       `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/events?id=eq.${eventId}`,
       { method: "PATCH", headers, body: JSON.stringify({ featured: !currentVal }) }
     );
-    setAllEvents((prev) =>
-      prev.map((e) => (e.id === eventId ? { ...e, featured: !currentVal } : e))
-    );
-    setFeaturedEvents((prev) =>
-      !currentVal
-        ? [...prev, allEvents.find((e) => e.id === eventId)!].filter(Boolean)
-        : prev.filter((e) => e.id !== eventId)
+    const updated = allEvents.map((e) => (e.id === eventId ? { ...e, featured: !currentVal } : e));
+    setAllEvents(updated);
+    setFeaturedEvents(updated.filter((e) => e.featured).sort((a, b) => a.sort_order - b.sort_order));
+  };
+
+  const moveFeatured = async (index: number, direction: "up" | "down") => {
+    const newList = [...featuredEvents];
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newList.length) return;
+    [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+    // Assign new sort_order values
+    const updates = newList.map((e, i) => ({ ...e, sort_order: i }));
+    setFeaturedEvents(updates);
+
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const headers: Record<string, string> = {
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+    await Promise.all(
+      updates.map((e) =>
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/events?id=eq.${e.id}`, {
+          method: "PATCH", headers, body: JSON.stringify({ sort_order: e.sort_order }),
+        })
+      )
     );
   };
 
@@ -359,9 +379,9 @@ const Index = () => {
 
         {/* Admin featured editor */}
         {showFeaturedEditor && isAdmin && (
-          <div className="bg-card rounded-2xl shadow-elevated p-4 mb-4 border border-border">
+           <div className="bg-card rounded-2xl shadow-elevated p-4 mb-4 border border-border">
             <h3 className="text-sm font-bold text-foreground mb-3">Scegli gli eventi in evidenza</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {allEvents.filter(e => e.artist !== "TBA").map((event) => (
                 <button
                   key={event.id}
@@ -382,6 +402,36 @@ const Index = () => {
                 </button>
               ))}
             </div>
+
+            {/* Reorder section */}
+            {featuredEvents.length > 1 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Ordine visualizzazione</h4>
+                <div className="space-y-1">
+                  {featuredEvents.map((event, idx) => (
+                    <div key={event.id} className="flex items-center gap-2 p-2 rounded-xl bg-muted/30">
+                      <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium text-foreground flex-1 truncate">{event.title}</span>
+                      <button
+                        onClick={() => moveFeatured(idx, "up")}
+                        disabled={idx === 0}
+                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center disabled:opacity-30 hover:bg-primary/10 transition-colors"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5 text-foreground" />
+                      </button>
+                      <button
+                        onClick={() => moveFeatured(idx, "down")}
+                        disabled={idx === featuredEvents.length - 1}
+                        className="w-7 h-7 rounded-lg bg-card flex items-center justify-center disabled:opacity-30 hover:bg-primary/10 transition-colors"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5 text-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={() => setShowFeaturedEditor(false)}
               className="mt-3 w-full bg-muted text-muted-foreground rounded-xl py-2 text-sm font-semibold hover:bg-muted/80 transition-colors"
