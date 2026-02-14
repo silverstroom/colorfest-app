@@ -6,7 +6,7 @@ import { supabaseFetchSingle } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User, LogOut, LogIn, Shield, Heart, Lock, Mail,
-  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone,
+  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -226,20 +226,44 @@ const Profile = () => {
           </div>
         </section>
 
-        {/* Admin & logout */}
-        <section>
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Altro</h2>
-          <div className="bg-card rounded-2xl shadow-card overflow-hidden divide-y divide-border">
-            {isAdmin && (
+        {/* Admin section */}
+        {isAdmin && (
+          <section>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Gestione App</h2>
+            <div className="bg-card rounded-2xl shadow-card overflow-hidden divide-y divide-border">
               <button
                 onClick={() => navigate("/admin")}
                 className="w-full p-4 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
               >
-                <Shield className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-foreground flex-1">Pannello Admin</span>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Pencil className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-foreground">Modalità Modifica</p>
+                  <p className="text-xs text-muted-foreground">Gestisci contenuti, eventi e impostazioni</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </button>
-            )}
+              <button
+                onClick={() => navigate("/admin?tab=events")}
+                className="w-full p-4 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-foreground">Gestione Eventi</p>
+                  <p className="text-xs text-muted-foreground">Aggiungi o modifica artisti e line-up</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Logout */}
+        <section>
+          <div className="bg-card rounded-2xl shadow-card overflow-hidden">
             <button
               onClick={async () => { await signOut(); navigate("/"); }}
               className="w-full p-4 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"

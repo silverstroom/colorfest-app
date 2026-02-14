@@ -29,11 +29,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = async (userId: string) => {
+  const checkAdmin = async (userId: string, token?: string) => {
     try {
       const data = await supabaseFetch(
         "user_roles",
-        `user_id=eq.${userId}&role=eq.admin&select=role`
+        `user_id=eq.${userId}&role=eq.admin&select=role`,
+        { token }
       );
       setIsAdmin(data.length > 0);
     } catch {
@@ -47,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await checkAdmin(session.user.id);
+          await checkAdmin(session.user.id, session.access_token);
         } else {
           setIsAdmin(false);
         }
@@ -70,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdmin(session.user.id);
+        checkAdmin(session.user.id, session.access_token);
       }
       setLoading(false);
     });
