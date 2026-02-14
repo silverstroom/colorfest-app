@@ -10,6 +10,7 @@ import logo from "@/assets/logo_white.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -23,7 +24,20 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        // If input looks like email use it directly, otherwise look up the email from profiles
+        let loginEmail = emailOrUsername;
+        if (!emailOrUsername.includes("@")) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("username", emailOrUsername)
+            .maybeSingle();
+          if (!profile) {
+            throw new Error("Nome utente non trovato");
+          }
+          loginEmail = profile.email;
+        }
+        const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) throw error;
         toast.success("Accesso effettuato!");
         navigate("/");
@@ -37,8 +51,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Registrazione completata!");
-        navigate("/");
+        toast.success("Registrazione completata! Controlla la tua email per confermare.");
       }
     } catch (err: any) {
       toast.error(err.message || "Errore durante l'autenticazione");
@@ -61,30 +74,42 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-card rounded-xl p-6 shadow-elevated space-y-4">
-          {!isLogin && (
+          {isLogin ? (
             <div className="space-y-2">
-              <Label htmlFor="username">Nome utente</Label>
+              <Label htmlFor="emailOrUsername">Email o Nome utente</Label>
               <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Il tuo nome utente"
-                required={!isLogin}
+                id="emailOrUsername"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="email@esempio.com o nome utente"
+                required
               />
             </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="username">Nome utente</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Il tuo nome utente"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@esempio.com"
+                  required
+                />
+              </div>
+            </>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@esempio.com"
-              required
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
