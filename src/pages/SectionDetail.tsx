@@ -285,6 +285,18 @@ const SectionDetail = () => {
                     />
                   </div>
                 )}
+
+                {/* Camping CTA */}
+                {event.title.toLowerCase().includes("camping") && (
+                  <a
+                    href="https://colorfest.it/prodotto/prenotazione-camping/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-sm tracking-wide hover:opacity-90 transition-opacity"
+                  >
+                    Verifica disponibilità
+                  </a>
+                )}
               </div>
             </div>
           );
