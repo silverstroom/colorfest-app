@@ -3,7 +3,7 @@ import { supabaseFetch } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera, Palette } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
 import NotificationBell from "@/components/NotificationBell";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +68,9 @@ const Index = () => {
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [showOverlayEditor, setShowOverlayEditor] = useState(false);
+  const [overlayColor, setOverlayColor] = useState("#3B5BDB");
+  const [overlayOpacity, setOverlayOpacity] = useState(80);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -84,6 +87,8 @@ const Index = () => {
         const map: Record<string, string> = {};
         settingsData.forEach((s: any) => { map[s.key] = s.value; });
         setSettings(map);
+        if (map.hero_overlay_color) setOverlayColor(map.hero_overlay_color);
+        if (map.hero_overlay_opacity) setOverlayOpacity(Number(map.hero_overlay_opacity));
       }
       if (eventsData) setFeaturedEvents(eventsData as Event[]);
     } catch (err) {
@@ -139,6 +144,24 @@ const Index = () => {
     setUploadingCover(false);
   };
 
+  const saveOverlaySettings = async () => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const headers: Record<string, string> = {
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation,resolution=merge-duplicates",
+    };
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`;
+    await Promise.all([
+      fetch(url, { method: "POST", headers, body: JSON.stringify({ key: "hero_overlay_color", value: overlayColor }) }),
+      fetch(url, { method: "POST", headers, body: JSON.stringify({ key: "hero_overlay_opacity", value: String(overlayOpacity) }) }),
+    ]);
+    setSettings((prev) => ({ ...prev, hero_overlay_color: overlayColor, hero_overlay_opacity: String(overlayOpacity) }));
+    toast({ title: "Overlay aggiornato ✓" });
+    setShowOverlayEditor(false);
+  };
+
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return "Buongiorno";
@@ -151,10 +174,16 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-primary text-primary-foreground">
-        <div className="absolute inset-0 opacity-20">
+      <section className="relative overflow-hidden text-primary-foreground">
+        {/* Background image */}
+        <div className="absolute inset-0">
           <img src={heroImage} alt="" className="w-full h-full object-cover" />
         </div>
+        {/* Color overlay */}
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: overlayColor, opacity: overlayOpacity / 100 }}
+        />
         <div className="relative z-10 px-5 pt-10 pb-14">
           <div className="flex items-center justify-between mb-6">
             <img src={logo} alt="Color Fest" className="h-8" />
@@ -168,6 +197,13 @@ const Index = () => {
                     title="Cambia copertina"
                   >
                     <Camera className="w-5 h-5 text-secondary-foreground" />
+                  </button>
+                  <button
+                    onClick={() => setShowOverlayEditor(!showOverlayEditor)}
+                    className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                    title="Colore e opacità"
+                  >
+                    <Palette className="w-5 h-5 text-secondary-foreground" />
                   </button>
                   <input
                     ref={coverInputRef}
@@ -195,6 +231,52 @@ const Index = () => {
               {settings.festival_dates || "11-12-13 Agosto 2026"}
             </span>
           </div>
+
+          {/* Overlay editor panel */}
+          {showOverlayEditor && isAdmin && (
+            <div className="mt-4 bg-card/95 backdrop-blur-sm rounded-2xl p-4 shadow-elevated text-foreground space-y-4">
+              <h3 className="text-sm font-bold">Colore e opacità overlay</h3>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Colore</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={overlayColor}
+                    onChange={(e) => setOverlayColor(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-border cursor-pointer"
+                  />
+                  <span className="text-sm font-mono text-muted-foreground">{overlayColor}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">
+                  Opacità: {overlayOpacity}%
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={overlayOpacity}
+                  onChange={(e) => setOverlayOpacity(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveOverlaySettings}
+                  className="flex-1 bg-primary text-primary-foreground rounded-xl py-2 text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  Salva
+                </button>
+                <button
+                  onClick={() => setShowOverlayEditor(false)}
+                  className="flex-1 bg-muted text-muted-foreground rounded-xl py-2 text-sm font-semibold hover:bg-muted/80 transition-colors"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 40" fill="none" preserveAspectRatio="none">
           <path d="M0,25 C360,50 720,0 1440,25 L1440,40 L0,40 Z" fill="hsl(43 100% 96%)" />
