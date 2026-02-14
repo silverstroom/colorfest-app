@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Clock, MapPin as MapPinIcon } from "lucide-react";
+import { ArrowLeft, Clock, MapPin as MapPinIcon, Music, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Event {
@@ -9,6 +9,8 @@ interface Event {
   title: string;
   description: string;
   artist: string;
+  bio: string;
+  spotify_url: string;
   start_time: string | null;
   end_time: string | null;
   day: number;
@@ -24,12 +26,20 @@ interface Section {
   icon: string;
 }
 
+const stageColors: Record<string, string> = {
+  "Palco dei Tramonti": "bg-red-500",
+  "Palco Pineta": "bg-green-600",
+  "Future Stage": "bg-purple-500",
+  "Marley Stage": "bg-amber-500",
+};
+
 const SectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [section, setSection] = useState<Section | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +52,7 @@ const SectionDetail = () => {
       supabase.from("events").select("*").eq("section_id", id).eq("is_active", true).order("sort_order"),
     ]);
     if (sectionRes.data) setSection(sectionRes.data);
-    if (eventsRes.data) setEvents(eventsRes.data);
+    if (eventsRes.data) setEvents(eventsRes.data as Event[]);
   };
 
   const days = [1, 2, 3];
@@ -53,6 +63,8 @@ const SectionDetail = () => {
     if (!iso) return "";
     return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   };
+
+  const isConcerti = section?.icon === "Music";
 
   if (!section) return null;
 
@@ -75,8 +87,20 @@ const SectionDetail = () => {
         </svg>
       </div>
 
+      {/* Stage legend for Concerti */}
+      {isConcerti && (
+        <div className="px-4 pt-4 flex flex-wrap gap-2">
+          {Object.entries(stageColors).map(([stage, color]) => (
+            <span key={stage} className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
+              {stage}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Day selector */}
-      {events.length > 0 && (
+      {events.length > 0 && events.some(e => e.day) && (
         <div className="px-4 pt-4 flex gap-2">
           {days.map((day, i) => (
             <button
@@ -101,40 +125,102 @@ const SectionDetail = () => {
             Nessun evento per questo giorno
           </p>
         )}
-        {filteredEvents.map((event, i) => (
-          <div
-            key={event.id}
-            className="bg-card rounded-xl p-4 shadow-card animate-fade-in"
-            style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
-          >
-            {event.image_url && (
-              <img src={event.image_url} alt={event.title} className="w-full h-40 object-cover rounded-lg mb-3" />
-            )}
-            <h3 className="font-bold text-lg text-foreground">{event.title}</h3>
-            {event.artist && <p className="text-primary font-medium">{event.artist}</p>}
-            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-              {event.start_time && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  {formatTime(event.start_time)}
-                  {event.end_time && ` - ${formatTime(event.end_time)}`}
-                </span>
+        {filteredEvents.map((event, i) => {
+          const isExpanded = expandedEvent === event.id;
+          const stageDot = stageColors[event.stage] || "bg-muted-foreground";
+          const isTBA = event.artist === "TBA";
+
+          return (
+            <div
+              key={event.id}
+              className={`bg-card rounded-xl shadow-card animate-fade-in overflow-hidden ${isTBA ? "opacity-60" : ""}`}
+              style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
+            >
+              {/* Artist image */}
+              {event.image_url && !isTBA && (
+                <div className="relative">
+                  <img
+                    src={event.image_url}
+                    alt={event.title}
+                    className="w-full h-48 object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Stage badge on image */}
+                  {event.stage && isConcerti && (
+                    <span className={`absolute top-3 right-3 ${stageDot} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}>
+                      {event.stage}
+                    </span>
+                  )}
+                </div>
               )}
-              {event.stage && (
-                <button
-                  onClick={() => navigate(`/map?highlight=${event.stage}`)}
-                  className="flex items-center gap-1 text-primary hover:underline"
-                >
-                  <MapPinIcon className="w-3.5 h-3.5" />
-                  {event.stage}
-                </button>
-              )}
+
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg text-foreground">{event.title}</h3>
+                    {event.artist && !isTBA && (
+                      <p className="text-primary font-medium text-sm">{event.artist}</p>
+                    )}
+                  </div>
+                  {!isTBA && event.bio && (
+                    <button
+                      onClick={() => setExpandedEvent(isExpanded ? null : event.id)}
+                      className="text-xs text-primary font-semibold ml-2 mt-1"
+                    >
+                      {isExpanded ? "Meno" : "Bio"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Stage + time info */}
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+                  {event.start_time && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {formatTime(event.start_time)}
+                      {event.end_time && ` - ${formatTime(event.end_time)}`}
+                    </span>
+                  )}
+                  {event.stage && (
+                    <button
+                      onClick={() => navigate(`/map?highlight=${event.stage}`)}
+                      className="flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <MapPinIcon className="w-3.5 h-3.5" />
+                      <span className="text-xs">Suonerà al: <strong>{event.stage}</strong></span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Description (always visible) */}
+                {event.description && !isExpanded && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{event.description}</p>
+                )}
+
+                {/* Expanded bio */}
+                {isExpanded && event.bio && (
+                  <div className="mt-3 space-y-3 animate-fade-in">
+                    <p className="text-sm text-foreground/80 leading-relaxed">{event.bio}</p>
+                  </div>
+                )}
+
+                {/* Spotify link */}
+                {event.spotify_url && !isTBA && (
+                  <a
+                    href={event.spotify_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 bg-[#1DB954] text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-[#1ed760] transition-colors"
+                  >
+                    <Music className="w-3.5 h-3.5" />
+                    Ascolta su Spotify
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
             </div>
-            {event.description && (
-              <p className="text-sm text-muted-foreground mt-2">{event.description}</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
