@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
+import RegistrationGate from "./components/RegistrationGate";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import SectionDetail from "./pages/SectionDetail";
@@ -21,6 +22,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <RegistrationGate />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
