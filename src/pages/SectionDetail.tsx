@@ -48,23 +48,18 @@ interface Section {
   icon: string;
 }
 
-const stageColors: Record<string, string> = {
-  "Palco dei Tramonti": "bg-red-500",
-  "Palco Pineta": "bg-green-600",
-  "Future Stage": "bg-purple-500",
-  "Marley Stage": "bg-amber-500",
+const stageColors: Record<string, { bg: string; text: string }> = {
+  "Palco dei Tramonti": { bg: "bg-red-500", text: "text-white" },
+  "Palco Pineta": { bg: "bg-green-600", text: "text-white" },
+  "Future Stage": { bg: "bg-purple-500", text: "text-white" },
+  "Marley Stage": { bg: "bg-amber-500", text: "text-white" },
 };
 
-/** Convert a Spotify artist URL to an embed URL */
 const toSpotifyEmbed = (url: string): string | null => {
   if (!url) return null;
-  // Already an embed URL
   if (url.includes("/embed/")) return url;
-  // Convert https://open.spotify.com/artist/ID to embed
   const match = url.match(/open\.spotify\.com\/(artist|track|album)\/([a-zA-Z0-9]+)/);
-  if (match) {
-    return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
-  }
+  if (match) return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
   return null;
 };
 
@@ -74,6 +69,7 @@ const SectionDetail = () => {
   const [section, setSection] = useState<Section | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,14 +88,23 @@ const SectionDetail = () => {
 
   const days = [1, 2, 3];
   const dayLabels = ["11 Ago", "12 Ago", "13 Ago"];
-  const filteredEvents = events.filter((e) => e.day === selectedDay);
+
+  const isConcerti = section?.icon === "Music";
+
+  // Get unique stages from events
+  const stages = [...new Set(events.map(e => e.stage).filter(Boolean))];
+
+  // Filter by day + optionally by stage
+  const filteredEvents = events.filter((e) => {
+    if (e.day !== selectedDay) return false;
+    if (selectedStage && e.stage !== selectedStage) return false;
+    return true;
+  });
 
   const formatTime = (iso: string | null) => {
     if (!iso) return "";
     return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   };
-
-  const isConcerti = section?.icon === "Music";
 
   if (!section) return null;
 
@@ -122,18 +127,6 @@ const SectionDetail = () => {
         </svg>
       </div>
 
-      {/* Stage legend for Concerti */}
-      {isConcerti && (
-        <div className="px-4 pt-4 flex flex-wrap gap-2">
-          {Object.entries(stageColors).map(([stage, color]) => (
-            <span key={stage} className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-              {stage}
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* Day selector */}
       {events.length > 0 && events.some(e => e.day) && (
         <div className="px-4 pt-4 flex gap-2">
@@ -153,16 +146,49 @@ const SectionDetail = () => {
         </div>
       )}
 
+      {/* Stage filter (only for Concerti) */}
+      {isConcerti && stages.length > 0 && (
+        <div className="px-4 pt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => setSelectedStage(null)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              selectedStage === null
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground shadow-card"
+            }`}
+          >
+            Tutti i palchi
+          </button>
+          {stages.map(stage => {
+            const sc = stageColors[stage];
+            return (
+              <button
+                key={stage}
+                onClick={() => setSelectedStage(selectedStage === stage ? null : stage)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                  selectedStage === stage
+                    ? `${sc?.bg || "bg-primary"} ${sc?.text || "text-primary-foreground"}`
+                    : "bg-card text-muted-foreground shadow-card"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${sc?.bg || "bg-muted-foreground"} ${selectedStage === stage ? "bg-white/50" : ""}`} />
+                {stage}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Events */}
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-4 py-6 space-y-5">
         {filteredEvents.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
-            Nessun evento per questo giorno
+            Nessun evento per questa selezione
           </p>
         )}
         {filteredEvents.map((event, i) => {
           const isExpanded = expandedEvent === event.id;
-          const stageDot = stageColors[event.stage] || "bg-muted-foreground";
+          const sc = stageColors[event.stage];
           const isTBA = event.artist === "TBA";
           const localImg = localImages[event.title] || localImages[event.artist];
           const imgSrc = localImg || event.image_url;
@@ -174,19 +200,19 @@ const SectionDetail = () => {
               className={`bg-card rounded-2xl shadow-card animate-fade-in overflow-hidden ${isTBA ? "opacity-60" : ""}`}
               style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
             >
-              {/* Artist image */}
+              {/* Artist image - mobile optimized: 16:9 crop */}
               {imgSrc && !isTBA && (
                 <div className="relative">
                   <img
                     src={imgSrc}
                     alt={event.title}
-                    className="w-full aspect-square object-cover object-top"
+                    className="w-full aspect-[16/10] object-cover object-top"
                     loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                   {/* Stage badge on image */}
-                  {event.stage && isConcerti && (
-                    <span className={`absolute top-3 right-3 ${stageDot} text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm`}>
+                  {event.stage && isConcerti && sc && (
+                    <span className={`absolute top-3 right-3 ${sc.bg} ${sc.text} text-xs font-bold px-3 py-1.5 rounded-full shadow-lg`}>
                       {event.stage}
                     </span>
                   )}
@@ -195,13 +221,11 @@ const SectionDetail = () => {
 
               <div className="p-4 space-y-3">
                 {/* Title row */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-black text-xl text-foreground leading-tight">{event.title}</h3>
-                    {event.artist && !isTBA && event.artist !== event.title && (
-                      <p className="text-primary font-medium text-sm mt-0.5">{event.artist}</p>
-                    )}
-                  </div>
+                <div>
+                  <h3 className="font-black text-xl text-foreground leading-tight">{event.title}</h3>
+                  {event.artist && !isTBA && event.artist !== event.title && (
+                    <p className="text-primary font-medium text-sm mt-0.5">{event.artist}</p>
+                  )}
                 </div>
 
                 {/* Stage + time info */}
@@ -219,7 +243,7 @@ const SectionDetail = () => {
                       className="flex items-center gap-1 text-primary hover:underline"
                     >
                       <MapPinIcon className="w-3.5 h-3.5" />
-                      <span className="text-xs">Suonerà al: <strong>{event.stage}</strong></span>
+                      <span className="text-xs">Vedi sulla mappa</span>
                     </button>
                   )}
                 </div>
