@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, X, Music } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { ArrowLeft, X, Music, Move, Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import mapImage from "@/assets/mappa.png";
 
 interface MapArea {
@@ -58,12 +60,17 @@ const markerColorByIcon: Record<string, string> = {
 
 const FestivalMap = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight");
   const [areas, setAreas] = useState<MapArea[]>([]);
   const [selectedArea, setSelectedArea] = useState<MapArea | null>(null);
   const [stageArtists, setStageArtists] = useState<StageArtist[]>([]);
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [unsavedChanges, setUnsavedChanges] = useState<Set<string>>(new Set());
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -99,20 +106,79 @@ const FestivalMap = () => {
       })
     : areas;
 
+  // Drag handling for edit mode
+  const getPercentFromEvent = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!mapRef.current) return null;
+    const rect = mapRef.current.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!editMode || !dragging) return;
+    e.preventDefault();
+    const pos = getPercentFromEvent(e);
+    if (!pos) return;
+    setAreas(prev => prev.map(a => a.id === dragging ? { ...a, x_percent: pos.x, y_percent: pos.y } : a));
+    setUnsavedChanges(prev => new Set(prev).add(dragging));
+  }, [editMode, dragging, getPercentFromEvent]);
+
+  const handlePointerUp = useCallback(() => {
+    setDragging(null);
+  }, []);
+
+  const savePositions = async () => {
+    const toSave = areas.filter(a => unsavedChanges.has(a.id));
+    for (const area of toSave) {
+      await supabase.from("map_areas").update({ x_percent: area.x_percent, y_percent: area.y_percent }).eq("id", area.id);
+    }
+    setUnsavedChanges(new Set());
+    toast.success(`${toSave.length} posizioni salvate!`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/")}
-          className="text-primary-foreground hover:bg-primary-foreground/10 mb-2"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
-        </Button>
+        <div className="flex items-center justify-between mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
+          </Button>
+          {isAdmin && (
+            <div className="flex gap-2">
+              {editMode && unsavedChanges.size > 0 && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={savePositions}
+                >
+                  <Save className="w-4 h-4 mr-1" /> Salva ({unsavedChanges.size})
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant={editMode ? "secondary" : "outline"}
+                className={editMode ? "" : "border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"}
+                onClick={() => { setEditMode(!editMode); setDragging(null); }}
+              >
+                {editMode ? <><Check className="w-4 h-4 mr-1" /> Fine</> : <><Move className="w-4 h-4 mr-1" /> Sposta POI</>}
+              </Button>
+            </div>
+          )}
+        </div>
         <h1 className="text-2xl font-black">Mappa del Festival</h1>
         <p className="text-sm text-primary-foreground/70">Lungomare Falcone e Borsellino - Riviera dei Tramonti</p>
+        {editMode && (
+          <p className="text-xs text-primary-foreground/50 mt-1">🔧 Trascina i marker per riposizionarli, poi salva</p>
+        )}
       </div>
 
       {/* Zone filter chips */}
@@ -143,11 +209,20 @@ const FestivalMap = () => {
       </div>
 
       {/* Map Container */}
-      <div className="relative mx-4 mt-3 bg-card rounded-xl shadow-elevated overflow-hidden">
+      <div
+        ref={mapRef}
+        className={`relative mx-4 mt-3 bg-card rounded-xl shadow-elevated overflow-hidden ${editMode ? "cursor-crosshair" : ""}`}
+        onMouseMove={editMode ? handlePointerMove : undefined}
+        onMouseUp={editMode ? handlePointerUp : undefined}
+        onMouseLeave={editMode ? handlePointerUp : undefined}
+        onTouchMove={editMode ? handlePointerMove : undefined}
+        onTouchEnd={editMode ? handlePointerUp : undefined}
+      >
         <img
           src={mapImage}
           alt="Mappa Color Fest"
-          className="w-full h-auto block"
+          className="w-full h-auto block select-none pointer-events-none"
+          draggable={false}
         />
 
         {/* Interactive markers overlay */}
@@ -156,39 +231,50 @@ const FestivalMap = () => {
           const isVisible = !activeZone || visibleAreas.some(a => a.id === area.id);
           const isSelected = selectedArea?.id === area.id;
           const isStage = Object.keys(stageColors).includes(area.name);
+          const isDragging = dragging === area.id;
+          const hasUnsaved = unsavedChanges.has(area.id);
 
           return (
-            <button
+            <div
               key={area.id}
-              onClick={() => setSelectedArea(area)}
-              className={`absolute flex flex-col items-center transition-all duration-300 ${
+              onMouseDown={(e) => {
+                if (editMode) { e.preventDefault(); setDragging(area.id); }
+              }}
+              onTouchStart={(e) => {
+                if (editMode) { setDragging(area.id); }
+              }}
+              onClick={() => { if (!editMode) setSelectedArea(area); }}
+              className={`absolute flex flex-col items-center transition-all ${
+                editMode ? "cursor-grab" : ""
+              } ${isDragging ? "cursor-grabbing z-50 scale-125" : ""} ${
                 isVisible ? "opacity-100" : "opacity-20 pointer-events-none"
-              } ${isSelected ? "scale-125 z-20" : "hover:scale-110 z-10"}`}
+              } ${!editMode && isSelected ? "scale-125 z-20" : !editMode ? "hover:scale-110 z-10" : "z-10"}`}
               style={{
                 left: `${area.x_percent}%`,
                 top: `${area.y_percent}%`,
                 transform: "translate(-50%, -100%)",
+                transitionDuration: isDragging ? "0ms" : "300ms",
               }}
             >
               {/* Pin shape */}
               <span
                 className={`flex items-center justify-center shadow-lg border-2 ${colors} ${
-                  isSelected ? "animate-pulse-glow" : ""
-                } ${isStage ? "w-10 h-10 rounded-lg" : "w-8 h-8 rounded-full"}`}
+                  isSelected && !editMode ? "animate-pulse-glow" : ""
+                } ${hasUnsaved && editMode ? "ring-2 ring-yellow-400" : ""} ${isStage ? "w-10 h-10 rounded-lg" : "w-8 h-8 rounded-full"}`}
               >
                 <span className="text-white text-[11px] font-black leading-none">
                   {isStage ? "♪" : area.name.charAt(0)}
                 </span>
               </span>
-              {/* Label - always visible for stages, on select for others */}
-              {(isStage || isSelected) && (
+              {/* Label - always visible in edit mode and for stages */}
+              {(isStage || isSelected || editMode) && (
                 <span className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold leading-none whitespace-nowrap ${
                   isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
                 }`}>
                   {area.name.length > 18 ? area.name.substring(0, 16) + "…" : area.name}
                 </span>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
