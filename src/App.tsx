@@ -11,6 +11,7 @@ import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import UserManagement from "./pages/UserManagement";
 import SectionDetail from "./pages/SectionDetail";
 import FestivalMap from "./pages/FestivalMap";
 import MyProgram from "./pages/MyProgram";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/section/:id" element={<SectionDetail />} />
             <Route path="/map" element={<FestivalMap />} />
             <Route path="/my-program" element={<MyProgram />} />

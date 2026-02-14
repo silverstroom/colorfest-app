@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -6,23 +6,26 @@ import { supabaseFetchSingle } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User, LogOut, LogIn, Shield, Heart, Lock, Mail,
-  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil,
+  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil, Camera, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ProfileData {
   username: string;
   email: string;
   marketing_consent: boolean;
   created_at: string;
+  avatar_url: string | null;
 }
 
 const Profile = () => {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut, session } = useAuth();
   const navigate = useNavigate();
   const { favorites } = useFavorites();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -30,16 +33,55 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [togglingMarketing, setTogglingMarketing] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabaseFetchSingle<ProfileData>(
       "profiles",
-      `user_id=eq.${user.id}&select=username,email,marketing_consent,created_at`
+      `user_id=eq.${user.id}&select=username,email,marketing_consent,created_at,avatar_url`
     ).then((data) => {
       if (data) setProfile(data);
     });
   }, [user]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "L'immagine deve essere inferiore a 2MB", variant: "destructive" });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      toast({ title: "Errore nel caricamento", variant: "destructive" });
+      setUploadingAvatar(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("user_id", user.id);
+
+    if (!updateError && profile) {
+      setProfile({ ...profile, avatar_url: avatarUrl });
+      toast({ title: "Foto profilo aggiornata ✓" });
+    }
+    setUploadingAvatar(false);
+  };
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
@@ -104,8 +146,30 @@ const Profile = () => {
       {/* Header */}
       <div className="px-4 pt-8 pb-2">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-            <User className="w-10 h-10 text-primary" />
+          {/* Avatar with upload */}
+          <div className="relative mb-3">
+            <Avatar className="w-20 h-20">
+              {profile?.avatar_url ? (
+                <AvatarImage src={profile.avatar_url} alt="Avatar" />
+              ) : null}
+              <AvatarFallback className="bg-primary/10">
+                <User className="w-10 h-10 text-primary" />
+              </AvatarFallback>
+            </Avatar>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
           </div>
           <h1 className="text-xl font-bold text-foreground">
             {profile?.username || user.email}
@@ -149,7 +213,6 @@ const Profile = () => {
         <section>
           <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Account</h2>
           <div className="bg-card rounded-2xl shadow-card overflow-hidden divide-y divide-border">
-            {/* Email */}
             <div className="p-4 flex items-center gap-3">
               <Mail className="w-5 h-5 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
@@ -157,8 +220,6 @@ const Profile = () => {
                 <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
               </div>
             </div>
-
-            {/* Change password */}
             <div className="p-4">
               <button
                 onClick={() => setShowPasswordForm(!showPasswordForm)}
@@ -204,18 +265,13 @@ const Profile = () => {
         <section>
           <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Preferenze</h2>
           <div className="bg-card rounded-2xl shadow-card overflow-hidden divide-y divide-border">
-            {/* Marketing consent */}
             <div className="p-4 flex items-center gap-3">
               <Megaphone className="w-5 h-5 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">Comunicazioni e novità</p>
                 <p className="text-xs text-muted-foreground">Ricevi aggiornamenti su eventi e promozioni</p>
               </div>
-              <button
-                onClick={handleToggleMarketing}
-                disabled={togglingMarketing}
-                className="shrink-0"
-              >
+              <button onClick={handleToggleMarketing} disabled={togglingMarketing} className="shrink-0">
                 {profile?.marketing_consent ? (
                   <CheckCircle2 className="w-6 h-6 text-green-500" />
                 ) : (
@@ -257,6 +313,19 @@ const Profile = () => {
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </button>
+              <button
+                onClick={() => navigate("/admin/users")}
+                className="w-full p-4 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-foreground">Gestione Utenti</p>
+                  <p className="text-xs text-muted-foreground">Visualizza utenti, cambia ruoli, esporta CSV</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
             </div>
           </section>
         )}
@@ -274,7 +343,6 @@ const Profile = () => {
           </div>
         </section>
 
-        {/* App info */}
         <div className="text-center pt-2 pb-4">
           <p className="text-xs text-muted-foreground">Color Fest XIV — v1.0</p>
         </div>
