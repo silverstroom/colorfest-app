@@ -1,8 +1,30 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Clock, MapPin as MapPinIcon, Music, ExternalLink } from "lucide-react";
+import { ArrowLeft, Clock, MapPin as MapPinIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+// Local artist images
+import imgApparat from "@/assets/artists/apparat.webp";
+import imgYinYin from "@/assets/artists/yinyin.webp";
+import imgGaiaBanfi from "@/assets/artists/gaia-banfi.webp";
+import imgCmonTigre from "@/assets/artists/cmon-tigre.webp";
+import imgMaiMaiMai from "@/assets/artists/mai-mai-mai.webp";
+import imgLaNina from "@/assets/artists/la-nina.webp";
+import imgTheZenCircus from "@/assets/artists/the-zen-circus.webp";
+import imgDeadletter from "@/assets/artists/deadletter.webp";
+
+const localImages: Record<string, string> = {
+  "Apparat (live)": imgApparat,
+  "Apparat": imgApparat,
+  "Yīn Yīn": imgYinYin,
+  "Gaia Banfi": imgGaiaBanfi,
+  "C'Mon Tigre": imgCmonTigre,
+  "MAI MAI MAI": imgMaiMaiMai,
+  "La Niña": imgLaNina,
+  "The Zen Circus": imgTheZenCircus,
+  "Deadletter": imgDeadletter,
+};
 
 interface Event {
   id: string;
@@ -31,6 +53,19 @@ const stageColors: Record<string, string> = {
   "Palco Pineta": "bg-green-600",
   "Future Stage": "bg-purple-500",
   "Marley Stage": "bg-amber-500",
+};
+
+/** Convert a Spotify artist URL to an embed URL */
+const toSpotifyEmbed = (url: string): string | null => {
+  if (!url) return null;
+  // Already an embed URL
+  if (url.includes("/embed/")) return url;
+  // Convert https://open.spotify.com/artist/ID to embed
+  const match = url.match(/open\.spotify\.com\/(artist|track|album)\/([a-zA-Z0-9]+)/);
+  if (match) {
+    return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+  }
+  return null;
 };
 
 const SectionDetail = () => {
@@ -119,7 +154,7 @@ const SectionDetail = () => {
       )}
 
       {/* Events */}
-      <div className="px-4 py-6 space-y-4">
+      <div className="px-4 py-6 space-y-6">
         {filteredEvents.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
             Nessun evento per questo giorno
@@ -129,51 +164,48 @@ const SectionDetail = () => {
           const isExpanded = expandedEvent === event.id;
           const stageDot = stageColors[event.stage] || "bg-muted-foreground";
           const isTBA = event.artist === "TBA";
+          const localImg = localImages[event.title] || localImages[event.artist];
+          const imgSrc = localImg || event.image_url;
+          const embedUrl = toSpotifyEmbed(event.spotify_url);
 
           return (
             <div
               key={event.id}
-              className={`bg-card rounded-xl shadow-card animate-fade-in overflow-hidden ${isTBA ? "opacity-60" : ""}`}
+              className={`bg-card rounded-2xl shadow-card animate-fade-in overflow-hidden ${isTBA ? "opacity-60" : ""}`}
               style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
             >
               {/* Artist image */}
-              {event.image_url && !isTBA && (
+              {imgSrc && !isTBA && (
                 <div className="relative">
                   <img
-                    src={event.image_url}
+                    src={imgSrc}
                     alt={event.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full aspect-square object-cover object-top"
+                    loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                   {/* Stage badge on image */}
                   {event.stage && isConcerti && (
-                    <span className={`absolute top-3 right-3 ${stageDot} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg`}>
+                    <span className={`absolute top-3 right-3 ${stageDot} text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm`}>
                       {event.stage}
                     </span>
                   )}
                 </div>
               )}
 
-              <div className="p-4">
+              <div className="p-4 space-y-3">
+                {/* Title row */}
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-bold text-lg text-foreground">{event.title}</h3>
-                    {event.artist && !isTBA && (
-                      <p className="text-primary font-medium text-sm">{event.artist}</p>
+                    <h3 className="font-black text-xl text-foreground leading-tight">{event.title}</h3>
+                    {event.artist && !isTBA && event.artist !== event.title && (
+                      <p className="text-primary font-medium text-sm mt-0.5">{event.artist}</p>
                     )}
                   </div>
-                  {!isTBA && event.bio && (
-                    <button
-                      onClick={() => setExpandedEvent(isExpanded ? null : event.id)}
-                      className="text-xs text-primary font-semibold ml-2 mt-1"
-                    >
-                      {isExpanded ? "Meno" : "Bio"}
-                    </button>
-                  )}
                 </div>
 
                 {/* Stage + time info */}
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                   {event.start_time && (
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
@@ -192,30 +224,42 @@ const SectionDetail = () => {
                   )}
                 </div>
 
-                {/* Description (always visible) */}
-                {event.description && !isExpanded && (
-                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{event.description}</p>
+                {/* Description */}
+                {event.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
                 )}
 
-                {/* Expanded bio */}
-                {isExpanded && event.bio && (
-                  <div className="mt-3 space-y-3 animate-fade-in">
-                    <p className="text-sm text-foreground/80 leading-relaxed">{event.bio}</p>
+                {/* Bio toggle */}
+                {!isTBA && event.bio && (
+                  <div>
+                    <button
+                      onClick={() => setExpandedEvent(isExpanded ? null : event.id)}
+                      className="text-xs text-primary font-bold uppercase tracking-wide"
+                    >
+                      {isExpanded ? "▲ Nascondi bio" : "▼ Leggi la bio"}
+                    </button>
+                    {isExpanded && (
+                      <p className="text-sm text-foreground/80 leading-relaxed mt-2 animate-fade-in">
+                        {event.bio}
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* Spotify link */}
-                {event.spotify_url && !isTBA && (
-                  <a
-                    href={event.spotify_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 mt-3 bg-[#1DB954] text-white text-xs font-bold px-3 py-1.5 rounded-full hover:bg-[#1ed760] transition-colors"
-                  >
-                    <Music className="w-3.5 h-3.5" />
-                    Ascolta su Spotify
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                {/* Spotify Embed */}
+                {embedUrl && !isTBA && (
+                  <div className="pt-1">
+                    <iframe
+                      src={embedUrl}
+                      width="100%"
+                      height="152"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      className="rounded-xl"
+                      title={`Spotify - ${event.title}`}
+                    />
+                  </div>
                 )}
               </div>
             </div>
