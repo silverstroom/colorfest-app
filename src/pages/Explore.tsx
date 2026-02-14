@@ -38,19 +38,37 @@ const Explore = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("[Explore] Starting fetch. SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL ? "SET" : "MISSING");
-        setLoading(true);
-        setError(null);
-        const secRes = await supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order");
-        console.log("[Explore] Sections result:", { data: secRes.data?.length, error: secRes.error });
-        const evRes = await supabase.from("events").select("section_id").eq("is_active", true);
-        console.log("[Explore] Events result:", { data: evRes.data?.length, error: evRes.error });
-        if (secRes.error) throw secRes.error;
-        if (evRes.error) throw evRes.error;
-        setSections(secRes.data || []);
-        const counts: Record<string, number> = {};
-        (evRes.data || []).forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
-        setEventCounts(counts);
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        console.log("[Explore] ENV check - URL:", url, "KEY:", key ? key.substring(0, 20) + "..." : "MISSING");
+        
+        // Test direct fetch first to check connectivity
+        console.log("[Explore] Testing direct fetch...");
+        const testUrl = `${url}/rest/v1/festival_sections?is_active=eq.true&order=sort_order&select=*`;
+        const directRes = await fetch(testUrl, {
+          headers: {
+            'apikey': key,
+            'Authorization': `Bearer ${key}`,
+          }
+        });
+        const directData = await directRes.json();
+        console.log("[Explore] Direct fetch result:", directRes.status, "rows:", Array.isArray(directData) ? directData.length : "not array");
+        
+        if (Array.isArray(directData) && directData.length > 0) {
+          setSections(directData);
+        }
+
+        // Also fetch event counts
+        const evUrl = `${url}/rest/v1/events?is_active=eq.true&select=section_id`;
+        const evDirectRes = await fetch(evUrl, {
+          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+        });
+        const evData = await evDirectRes.json();
+        if (Array.isArray(evData)) {
+          const counts: Record<string, number> = {};
+          evData.forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
+          setEventCounts(counts);
+        }
       } catch (err: any) {
         console.error("[Explore] Fetch error:", err);
         setError(err.message || "Errore nel caricamento");

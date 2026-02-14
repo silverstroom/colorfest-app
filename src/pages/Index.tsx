@@ -70,18 +70,29 @@ const Index = () => {
 
   const fetchData = async () => {
     try {
-      console.log("[Index] Starting fetch. SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL ? "SET" : "MISSING");
-      setLoading(true);
-      const settingsRes = await supabase.from("app_settings").select("*");
-      console.log("[Index] Settings result:", { data: settingsRes.data?.length, error: settingsRes.error });
-      const eventsRes = await supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6);
-      console.log("[Index] Events result:", { data: eventsRes.data?.length, error: eventsRes.error });
-      if (settingsRes.data) {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      console.log("[Index] Starting direct fetch. URL:", url ? "SET" : "MISSING");
+
+      // Direct fetch for settings
+      const settingsRes = await fetch(`${url}/rest/v1/app_settings?select=*`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+      });
+      const settingsData = await settingsRes.json();
+      console.log("[Index] Settings:", settingsRes.status, Array.isArray(settingsData) ? settingsData.length : "not array");
+      if (Array.isArray(settingsData)) {
         const map: Record<string, string> = {};
-        settingsRes.data.forEach((s: AppSetting) => { map[s.key] = s.value; });
+        settingsData.forEach((s: any) => { map[s.key] = s.value; });
         setSettings(map);
       }
-      if (eventsRes.data) setFeaturedEvents(eventsRes.data as Event[]);
+
+      // Direct fetch for events
+      const eventsRes = await fetch(`${url}/rest/v1/events?is_active=eq.true&order=sort_order&limit=6&select=*`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+      });
+      const eventsData = await eventsRes.json();
+      console.log("[Index] Events:", eventsRes.status, Array.isArray(eventsData) ? eventsData.length : "not array");
+      if (Array.isArray(eventsData)) setFeaturedEvents(eventsData as Event[]);
     } catch (err) {
       console.error("[Index] Fetch error:", err);
     } finally {
