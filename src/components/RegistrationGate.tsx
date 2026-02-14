@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo_white.png";
 
@@ -9,7 +9,10 @@ const GATE_KEY = "colorfest_gate_dismissed";
 const RegistrationGate = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [show, setShow] = useState(false);
+  
+  const isAuthPage = location.pathname === "/auth";
 
   useEffect(() => {
     // If logged in, never show
@@ -39,7 +42,7 @@ const RegistrationGate = () => {
     }
   }, [user]);
 
-  if (!show || user) return null;
+  if (!show || user || isAuthPage) return null;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
