@@ -1,10 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabaseFetch } from "@/lib/supabase-fetch";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, ChevronRight, Eye, Sparkles } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
 import NotificationBell from "@/components/NotificationBell";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo_white.png";
 import poster from "@/assets/poster.jpeg";
 
@@ -61,9 +63,12 @@ const getViewerCount = (eventId: string) => {
 const Index = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -88,6 +93,52 @@ const Index = () => {
     }
   };
 
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "L'immagine deve essere inferiore a 5MB", variant: "destructive" });
+      return;
+    }
+    setUploadingCover(true);
+    const ext = file.name.split(".").pop();
+    const path = `hero-cover.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("site-assets")
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      toast({ title: "Errore nel caricamento", variant: "destructive" });
+      setUploadingCover(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("site-assets").getPublicUrl(path);
+    const coverUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    // Save to app_settings
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const headers: Record<string, string> = {
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation,resolution=merge-duplicates",
+    };
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ key: "hero_cover_url", value: coverUrl }),
+      }
+    );
+
+    setSettings((prev) => ({ ...prev, hero_cover_url: coverUrl }));
+    toast({ title: "Copertina aggiornata ✓" });
+    setUploadingCover(false);
+  };
+
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return "Buongiorno";
@@ -95,17 +146,38 @@ const Index = () => {
     return "Buonasera";
   }, []);
 
+  const heroImage = settings.hero_cover_url || poster;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Hero */}
       <section className="relative overflow-hidden bg-primary text-primary-foreground">
         <div className="absolute inset-0 opacity-20">
-          <img src={poster} alt="" className="w-full h-full object-cover" />
+          <img src={heroImage} alt="" className="w-full h-full object-cover" />
         </div>
         <div className="relative z-10 px-5 pt-10 pb-14">
           <div className="flex items-center justify-between mb-6">
             <img src={logo} alt="Color Fest" className="h-8" />
             <div className="flex items-center gap-2">
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                    title="Cambia copertina"
+                  >
+                    <Camera className="w-5 h-5 text-secondary-foreground" />
+                  </button>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCoverUpload}
+                  />
+                </>
+              )}
               <NotificationBell />
               <AdminEditButton tab="settings" />
             </div>
