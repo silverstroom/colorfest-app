@@ -46,7 +46,7 @@ const SectionDetail = () => {
   };
 
   const days = [1, 2, 3];
-  const dayLabels = ["12 Ago", "13 Ago", "14 Ago"];
+  const dayLabels = ["11 Ago", "12 Ago", "13 Ago"];
   const filteredEvents = events.filter((e) => e.day === selectedDay);
 
   const formatTime = (iso: string | null) => {
@@ -104,7 +104,7 @@ const SectionDetail = () => {
         {filteredEvents.map((event, i) => (
           <div
             key={event.id}
-            className="bg-card rounded-xl p-4 shadow-card animate-slide-in-bottom"
+            className="bg-card rounded-xl p-4 shadow-card animate-fade-in"
             style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
           >
             {event.image_url && (

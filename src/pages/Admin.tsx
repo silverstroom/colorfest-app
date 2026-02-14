@@ -181,9 +181,9 @@ const EventsManager = () => {
           <div>
             <Label className="text-xs">Giorno</Label>
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.day} onChange={(e) => setForm({ ...form, day: Number(e.target.value) })}>
-              <option value={1}>12 Ago</option>
-              <option value={2}>13 Ago</option>
-              <option value={3}>14 Ago</option>
+            <option value={1}>11 Ago</option>
+              <option value={2}>12 Ago</option>
+              <option value={3}>13 Ago</option>
             </select>
           </div>
           <div>
