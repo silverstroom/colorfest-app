@@ -51,10 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // If user didn't check "Ricordami" and this is a new browser session, sign out
+      // "Ricordami" logic: only sign out if user explicitly logged in WITHOUT "Ricordami"
       const remembered = localStorage.getItem("colorfest_remember");
       const sessionActive = sessionStorage.getItem("colorfest_session_active");
-      if (session?.user && !remembered && !sessionActive) {
+      const noRememberSet = localStorage.getItem("colorfest_no_remember");
+      if (session?.user && noRememberSet === "true" && !sessionActive) {
+        // User explicitly chose not to be remembered and this is a new browser session
+        localStorage.removeItem("colorfest_no_remember");
         supabase.auth.signOut();
         setLoading(false);
         return;

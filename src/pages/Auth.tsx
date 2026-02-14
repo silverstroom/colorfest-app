@@ -43,8 +43,10 @@ const Auth = () => {
         // Store remember preference
         if (rememberMe) {
           localStorage.setItem("colorfest_remember", "true");
+          localStorage.removeItem("colorfest_no_remember");
         } else {
           localStorage.removeItem("colorfest_remember");
+          localStorage.setItem("colorfest_no_remember", "true");
           sessionStorage.setItem("colorfest_session_active", "true");
         }
         toast.success("Accesso effettuato!");
