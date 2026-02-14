@@ -62,22 +62,32 @@ const Index = () => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const [settingsRes, eventsRes] = await Promise.all([
-      supabase.from("app_settings").select("*"),
-      supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6),
-    ]);
-    if (settingsRes.data) {
-      const map: Record<string, string> = {};
-      settingsRes.data.forEach((s: AppSetting) => { map[s.key] = s.value; });
-      setSettings(map);
+    try {
+      setLoading(true);
+      const [settingsRes, eventsRes] = await Promise.all([
+        supabase.from("app_settings").select("*"),
+        supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6),
+      ]);
+      if (settingsRes.error) console.error("Settings fetch error:", settingsRes.error);
+      if (eventsRes.error) console.error("Events fetch error:", eventsRes.error);
+      if (settingsRes.data) {
+        const map: Record<string, string> = {};
+        settingsRes.data.forEach((s: AppSetting) => { map[s.key] = s.value; });
+        setSettings(map);
+      }
+      if (eventsRes.data) setFeaturedEvents(eventsRes.data as Event[]);
+    } catch (err) {
+      console.error("Index fetch error:", err);
+    } finally {
+      setLoading(false);
     }
-    if (eventsRes.data) setFeaturedEvents(eventsRes.data as Event[]);
   };
 
   const greeting = useMemo(() => {

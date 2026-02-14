@@ -86,6 +86,7 @@ const SectionDetail = () => {
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -93,12 +94,21 @@ const SectionDetail = () => {
   }, [id]);
 
   const fetchData = async () => {
-    const [sectionRes, eventsRes] = await Promise.all([
-      supabase.from("festival_sections").select("*").eq("id", id).single(),
-      supabase.from("events").select("*").eq("section_id", id).eq("is_active", true).order("sort_order"),
-    ]);
-    if (sectionRes.data) setSection(sectionRes.data);
-    if (eventsRes.data) setEvents(eventsRes.data as Event[]);
+    try {
+      setLoading(true);
+      const [sectionRes, eventsRes] = await Promise.all([
+        supabase.from("festival_sections").select("*").eq("id", id).maybeSingle(),
+        supabase.from("events").select("*").eq("section_id", id).eq("is_active", true).order("sort_order"),
+      ]);
+      if (sectionRes.error) console.error("Section fetch error:", sectionRes.error);
+      if (eventsRes.error) console.error("Section events fetch error:", eventsRes.error);
+      if (sectionRes.data) setSection(sectionRes.data);
+      if (eventsRes.data) setEvents(eventsRes.data as Event[]);
+    } catch (err) {
+      console.error("SectionDetail fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const days = [1, 2, 3];
@@ -122,7 +132,22 @@ const SectionDetail = () => {
     return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
   };
 
-  if (!section) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!section) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">Sezione non trovata</p>
+        <Button variant="outline" onClick={() => navigate("/explore")}>Torna a Esplora</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">

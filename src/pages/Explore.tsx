@@ -32,18 +32,29 @@ const Explore = () => {
   const navigate = useNavigate();
   const [sections, setSections] = useState<Section[]>([]);
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [secRes, evRes] = await Promise.all([
-        supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("events").select("section_id").eq("is_active", true),
-      ]);
-      if (secRes.data) setSections(secRes.data);
-      if (evRes.data) {
+      try {
+        setLoading(true);
+        setError(null);
+        const [secRes, evRes] = await Promise.all([
+          supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order"),
+          supabase.from("events").select("section_id").eq("is_active", true),
+        ]);
+        if (secRes.error) throw secRes.error;
+        if (evRes.error) throw evRes.error;
+        setSections(secRes.data || []);
         const counts: Record<string, number> = {};
-        evRes.data.forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
+        (evRes.data || []).forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
         setEventCounts(counts);
+      } catch (err: any) {
+        console.error("Explore fetch error:", err);
+        setError(err.message || "Errore nel caricamento");
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -69,6 +80,20 @@ const Explore = () => {
       </div>
 
       <div className="px-4 py-4 space-y-3">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-destructive text-sm mb-2">{error}</p>
+            <button onClick={() => window.location.reload()} className="text-primary text-sm font-semibold">Riprova</button>
+          </div>
+        )}
+        {!loading && !error && sections.length === 0 && (
+          <p className="text-center text-muted-foreground py-8">Nessuna sezione disponibile</p>
+        )}
         {sections.map((section, i) => (
           <button
             key={section.id}
