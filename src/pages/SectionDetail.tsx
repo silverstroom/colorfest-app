@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Clock, MapPin as MapPinIcon } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFavorites } from "@/hooks/use-favorites";
+import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Local artist images
@@ -66,6 +68,8 @@ const toSpotifyEmbed = (url: string): string | null => {
 const SectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isFavorite, toggle: toggleFavorite } = useFavorites();
   const [section, setSection] = useState<Section | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDay, setSelectedDay] = useState(1);
@@ -221,10 +225,22 @@ const SectionDetail = () => {
 
               <div className="p-4 space-y-3">
                 {/* Title row */}
-                <div>
-                  <h3 className="font-black text-xl text-foreground leading-tight">{event.title}</h3>
-                  {event.artist && !isTBA && event.artist !== event.title && (
-                    <p className="text-primary font-medium text-sm mt-0.5">{event.artist}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-black text-xl text-foreground leading-tight">{event.title}</h3>
+                    {event.artist && !isTBA && event.artist !== event.title && (
+                      <p className="text-primary font-medium text-sm mt-0.5">{event.artist}</p>
+                    )}
+                  </div>
+                  {user && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(event.id); }}
+                      className="shrink-0 p-1 transition-colors"
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${isFavorite(event.id) ? "text-red-500 fill-red-500" : "text-muted-foreground/40"}`}
+                      />
+                    </button>
                   )}
                 </div>
 

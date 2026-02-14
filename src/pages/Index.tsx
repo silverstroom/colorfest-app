@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, Calendar, ChevronRight, ShoppingBag, Waves } from "lucide-react";
+import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, Calendar, ChevronRight, ShoppingBag, Waves, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo_white.png";
 import poster from "@/assets/poster.jpeg";
@@ -154,6 +154,25 @@ const Index = () => {
           </div>
           <ChevronRight className="w-5 h-5" />
         </button>
+
+        {/* My Program button */}
+        {user && (
+          <button
+            onClick={() => navigate("/my-program")}
+            className="w-full mt-3 bg-card text-foreground rounded-xl p-4 shadow-card flex items-center justify-between hover:shadow-elevated transition-shadow"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-white" fill="white" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-lg">Il mio programma</p>
+                <p className="text-sm text-muted-foreground">I tuoi eventi salvati</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+        )}
       </section>
 
       {/* Sections Grid */}
