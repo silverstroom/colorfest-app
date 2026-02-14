@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { supabaseFetch } from "@/lib/supabase-fetch";
+import { supabaseFetch, supabaseInsert, supabaseUpdate, supabaseDelete } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Plus, Trash2, Save, Eye, EyeOff, Users, Settings, Map, LayoutGrid, Megaphone, Music, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const Admin = () => {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, session } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "sections";
@@ -24,6 +23,8 @@ const Admin = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background">Caricamento...</div>;
   if (!isAdmin) return null;
+
+  const token = session?.access_token;
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,11 +64,11 @@ const Admin = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sections"><SectionsManager /></TabsContent>
-        <TabsContent value="events"><EventsManager /></TabsContent>
-        <TabsContent value="map"><MapAreasManager /></TabsContent>
-        <TabsContent value="sponsors"><SponsorsManager /></TabsContent>
-        <TabsContent value="settings"><SettingsManager /></TabsContent>
+        <TabsContent value="sections"><SectionsManager token={token} /></TabsContent>
+        <TabsContent value="events"><EventsManager token={token} /></TabsContent>
+        <TabsContent value="map"><MapAreasManager token={token} /></TabsContent>
+        <TabsContent value="sponsors"><SponsorsManager token={token} /></TabsContent>
+        <TabsContent value="settings"><SettingsManager token={token} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -90,33 +91,33 @@ const AdminCard = ({ title, children, defaultOpen = false }: { title: string; ch
 };
 
 // ---- Sections Manager ----
-const SectionsManager = () => {
+const SectionsManager = ({ token }: { token?: string }) => {
   const [sections, setSections] = useState<any[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", icon: "MapPin", sort_order: 0, is_active: true });
 
-  const fetch = async () => {
-    const { data } = await supabase.from("festival_sections").select("*").order("sort_order");
-    if (data) setSections(data);
+  const load = async () => {
+    const data = await supabaseFetch("festival_sections", "order=sort_order&select=*", { token });
+    setSections(data);
   };
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { load(); }, []);
 
   const save = async () => {
     if (editId) {
-      await supabase.from("festival_sections").update(form).eq("id", editId);
+      await supabaseUpdate("festival_sections", `id=eq.${editId}`, form, { token });
     } else {
-      await supabase.from("festival_sections").insert(form);
+      await supabaseInsert("festival_sections", form, { token });
     }
     toast.success("Salvato!");
     setEditId(null);
     setForm({ name: "", description: "", icon: "MapPin", sort_order: 0, is_active: true });
-    fetch();
+    load();
   };
 
   const remove = async (id: string) => {
-    await supabase.from("festival_sections").delete().eq("id", id);
+    await supabaseDelete("festival_sections", `id=eq.${id}`, { token });
     toast.success("Eliminato!");
-    fetch();
+    load();
   };
 
   const edit = (s: any) => {
@@ -172,8 +173,17 @@ const SectionsManager = () => {
   );
 };
 
+// Helper: convert Spotify URL to embed
+const toSpotifyEmbed = (url: string): string | null => {
+  if (!url) return null;
+  if (url.includes("/embed/")) return url;
+  const match = url.match(/open\.spotify\.com\/(artist|track|album)\/([a-zA-Z0-9]+)/);
+  if (match) return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+  return null;
+};
+
 // ---- Events Manager ----
-const EventsManager = () => {
+const EventsManager = ({ token }: { token?: string }) => {
   const [events, setEvents] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
@@ -184,21 +194,21 @@ const EventsManager = () => {
   const [filterSection, setFilterSection] = useState<string>("");
 
   const fetchAll = async () => {
-    const [evRes, secRes] = await Promise.all([
-      supabase.from("events").select("*").order("sort_order"),
-      supabase.from("festival_sections").select("id, name").order("sort_order"),
+    const [evData, secData] = await Promise.all([
+      supabaseFetch("events", "order=sort_order&select=*", { token }),
+      supabaseFetch("festival_sections", "order=sort_order&select=id,name", { token }),
     ]);
-    if (evRes.data) setEvents(evRes.data);
-    if (secRes.data) setSections(secRes.data);
+    setEvents(evData);
+    setSections(secData);
   };
   useEffect(() => { fetchAll(); }, []);
 
   const save = async () => {
     const payload = { ...form, start_time: form.start_time || null, end_time: form.end_time || null };
     if (editId) {
-      await supabase.from("events").update(payload).eq("id", editId);
+      await supabaseUpdate("events", `id=eq.${editId}`, payload, { token });
     } else {
-      await supabase.from("events").insert(payload);
+      await supabaseInsert("events", payload, { token });
     }
     toast.success("Salvato!");
     setEditId(null);
@@ -207,7 +217,7 @@ const EventsManager = () => {
   };
 
   const remove = async (id: string) => {
-    await supabase.from("events").delete().eq("id", id);
+    await supabaseDelete("events", `id=eq.${id}`, { token });
     toast.success("Eliminato!");
     fetchAll();
   };
@@ -233,6 +243,7 @@ const EventsManager = () => {
 
   const filteredEvents = filterSection ? events.filter(e => e.section_id === filterSection) : events;
   const getSectionName = (id: string) => sections.find(s => s.id === id)?.name || "—";
+  const embedPreview = toSpotifyEmbed(form.spotify_url);
 
   return (
     <div className="space-y-4">
@@ -275,7 +286,7 @@ const EventsManager = () => {
           <Input placeholder="https://..." value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Label className="text-xs text-muted-foreground flex items-center gap-1">
             <Music className="w-3 h-3" /> Spotify URL o Embed
           </Label>
@@ -287,6 +298,22 @@ const EventsManager = () => {
           <p className="text-[10px] text-muted-foreground">
             Inserisci il link Spotify dell'artista (es. https://open.spotify.com/artist/xxxxx) — verrà convertito automaticamente in embed
           </p>
+          {/* Live Spotify embed preview */}
+          {embedPreview && (
+            <div className="mt-2 rounded-xl overflow-hidden border border-border">
+              <p className="text-[10px] text-primary font-semibold px-3 pt-2 pb-1">📻 Anteprima Embed:</p>
+              <iframe
+                src={embedPreview}
+                width="100%"
+                height="152"
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                className="rounded-b-xl"
+                title="Spotify Preview"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -363,28 +390,28 @@ const EventsManager = () => {
 };
 
 // ---- Map Areas Manager ----
-const MapAreasManager = () => {
+const MapAreasManager = ({ token }: { token?: string }) => {
   const [areas, setAreas] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", x_percent: 50, y_percent: 50, icon: "MapPin", section_id: "", is_active: true });
 
   const fetchAll = async () => {
-    const [aRes, sRes] = await Promise.all([
-      supabase.from("map_areas").select("*"),
-      supabase.from("festival_sections").select("id, name").order("sort_order"),
+    const [aData, sData] = await Promise.all([
+      supabaseFetch("map_areas", "select=*", { token }),
+      supabaseFetch("festival_sections", "order=sort_order&select=id,name", { token }),
     ]);
-    if (aRes.data) setAreas(aRes.data);
-    if (sRes.data) setSections(sRes.data);
+    setAreas(aData);
+    setSections(sData);
   };
   useEffect(() => { fetchAll(); }, []);
 
   const save = async () => {
     const payload = { ...form, section_id: form.section_id || null };
     if (editId) {
-      await supabase.from("map_areas").update(payload).eq("id", editId);
+      await supabaseUpdate("map_areas", `id=eq.${editId}`, payload, { token });
     } else {
-      await supabase.from("map_areas").insert(payload);
+      await supabaseInsert("map_areas", payload, { token });
     }
     toast.success("Salvato!");
     setEditId(null);
@@ -393,7 +420,7 @@ const MapAreasManager = () => {
   };
 
   const remove = async (id: string) => {
-    await supabase.from("map_areas").delete().eq("id", id);
+    await supabaseDelete("map_areas", `id=eq.${id}`, { token });
     toast.success("Eliminato!");
     fetchAll();
   };
@@ -452,33 +479,33 @@ const MapAreasManager = () => {
 };
 
 // ---- Sponsors Manager ----
-const SponsorsManager = () => {
+const SponsorsManager = ({ token }: { token?: string }) => {
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", image_url: "", link_url: "", sort_order: 0, is_active: true });
 
-  const fetch = async () => {
-    const { data } = await supabase.from("sponsor_banners").select("*").order("sort_order");
-    if (data) setSponsors(data);
+  const load = async () => {
+    const data = await supabaseFetch("sponsor_banners", "order=sort_order&select=*", { token });
+    setSponsors(data);
   };
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { load(); }, []);
 
   const save = async () => {
     if (editId) {
-      await supabase.from("sponsor_banners").update(form).eq("id", editId);
+      await supabaseUpdate("sponsor_banners", `id=eq.${editId}`, form, { token });
     } else {
-      await supabase.from("sponsor_banners").insert(form);
+      await supabaseInsert("sponsor_banners", form, { token });
     }
     toast.success("Salvato!");
     setEditId(null);
     setForm({ name: "", image_url: "", link_url: "", sort_order: 0, is_active: true });
-    fetch();
+    load();
   };
 
   const remove = async (id: string) => {
-    await supabase.from("sponsor_banners").delete().eq("id", id);
+    await supabaseDelete("sponsor_banners", `id=eq.${id}`, { token });
     toast.success("Eliminato!");
-    fetch();
+    load();
   };
 
   return (
@@ -515,18 +542,16 @@ const SponsorsManager = () => {
 };
 
 // ---- Settings Manager ----
-const SettingsManager = () => {
+const SettingsManager = ({ token }: { token?: string }) => {
   const [settings, setSettings] = useState<Record<string, string>>({});
 
-  const fetch = async () => {
-    const { data } = await supabase.from("app_settings").select("*");
-    if (data) {
-      const map: Record<string, string> = {};
-      data.forEach((s: any) => { map[s.key] = s.value; });
-      setSettings(map);
-    }
+  const load = async () => {
+    const data = await supabaseFetch("app_settings", "select=*", { token });
+    const map: Record<string, string> = {};
+    data.forEach((s: any) => { map[s.key] = s.value; });
+    setSettings(map);
   };
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { load(); }, []);
 
   const update = async (key: string, value: string) => {
     setSettings({ ...settings, [key]: value });
@@ -534,7 +559,7 @@ const SettingsManager = () => {
 
   const saveAll = async () => {
     for (const [key, value] of Object.entries(settings)) {
-      await supabase.from("app_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+      await supabaseUpdate("app_settings", `key=eq.${key}`, { value, updated_at: new Date().toISOString() }, { token });
     }
     toast.success("Impostazioni salvate!");
   };

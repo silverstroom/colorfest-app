@@ -19,6 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+export { AuthContext };
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
