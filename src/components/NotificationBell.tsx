@@ -17,10 +17,10 @@ const NotificationBell = () => {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className="relative w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center hover:bg-primary-foreground/30 transition-colors"
+        className="relative w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
         aria-label="Notifiche"
       >
-        <Bell className="w-5 h-5 text-primary-foreground" />
+        <Bell className="w-5 h-5 text-secondary-foreground" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center animate-pulse">
             {unreadCount}
