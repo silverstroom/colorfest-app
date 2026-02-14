@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch, supabaseUpdate } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, X, Music, Move, Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,13 +79,11 @@ const FestivalMap = () => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      supabase.from("map_areas").select("*").eq("is_active", true),
-      supabase.from("events").select("title, artist, day, stage").eq("is_active", true).neq("artist", "TBA").neq("artist", "").neq("stage", "").order("day").order("sort_order"),
-    ]).then(([areasRes, eventsRes]) => {
-      if (areasRes.error) console.error("Map areas fetch error:", areasRes.error);
-      if (eventsRes.error) console.error("Map events fetch error:", eventsRes.error);
-      if (areasRes.data) setAreas(areasRes.data);
-      if (eventsRes.data) setStageArtists(eventsRes.data as StageArtist[]);
+      supabaseFetch("map_areas", "is_active=eq.true&select=*"),
+      supabaseFetch("events", "is_active=eq.true&artist=neq.TBA&artist=neq.&stage=neq.&order=day,sort_order&select=title,artist,day,stage"),
+    ]).then(([areasData, eventsData]) => {
+      setAreas(areasData);
+      setStageArtists(eventsData as StageArtist[]);
     }).catch(err => console.error("Map fetch error:", err))
     .finally(() => setLoading(false));
   }, []);
@@ -140,6 +138,7 @@ const FestivalMap = () => {
 
   const savePositions = async () => {
     const toSave = areas.filter(a => unsavedChanges.has(a.id));
+    const { supabase } = await import("@/integrations/supabase/client");
     for (const area of toSave) {
       await supabase.from("map_areas").update({ x_percent: area.x_percent, y_percent: area.y_percent }).eq("id", area.id);
     }

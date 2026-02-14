@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch, supabaseFetchSingle } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/use-favorites";
 import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart, Eye, Pencil } from "lucide-react";
@@ -96,14 +96,12 @@ const SectionDetail = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [sectionRes, eventsRes] = await Promise.all([
-        supabase.from("festival_sections").select("*").eq("id", id).maybeSingle(),
-        supabase.from("events").select("*").eq("section_id", id).eq("is_active", true).order("sort_order"),
+      const [sectionData, eventsData] = await Promise.all([
+        supabaseFetchSingle("festival_sections", `id=eq.${id}&select=*`),
+        supabaseFetch("events", `section_id=eq.${id}&is_active=eq.true&order=sort_order&select=*`),
       ]);
-      if (sectionRes.error) console.error("Section fetch error:", sectionRes.error);
-      if (eventsRes.error) console.error("Section events fetch error:", eventsRes.error);
-      if (sectionRes.data) setSection(sectionRes.data);
-      if (eventsRes.data) setEvents(eventsRes.data as Event[]);
+      if (sectionData) setSection(sectionData);
+      if (eventsData) setEvents(eventsData as Event[]);
     } catch (err) {
       console.error("SectionDetail fetch error:", err);
     } finally {

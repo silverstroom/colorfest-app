@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Plus, Trash2, Save, Eye, EyeOff, Users, Settings, Map, LayoutGrid, Megaphone, Music, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

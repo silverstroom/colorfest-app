@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Calendar, MapPin, ChevronRight, Eye, Sparkles } from "lucide-react";
@@ -70,29 +70,16 @@ const Index = () => {
 
   const fetchData = async () => {
     try {
-      const url = import.meta.env.VITE_SUPABASE_URL;
-      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      console.log("[Index] Starting direct fetch. URL:", url ? "SET" : "MISSING");
-
-      // Direct fetch for settings
-      const settingsRes = await fetch(`${url}/rest/v1/app_settings?select=*`, {
-        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-      });
-      const settingsData = await settingsRes.json();
-      console.log("[Index] Settings:", settingsRes.status, Array.isArray(settingsData) ? settingsData.length : "not array");
-      if (Array.isArray(settingsData)) {
+      const [settingsData, eventsData] = await Promise.all([
+        supabaseFetch("app_settings", "select=*"),
+        supabaseFetch("events", "is_active=eq.true&order=sort_order&limit=6&select=*"),
+      ]);
+      if (settingsData) {
         const map: Record<string, string> = {};
         settingsData.forEach((s: any) => { map[s.key] = s.value; });
         setSettings(map);
       }
-
-      // Direct fetch for events
-      const eventsRes = await fetch(`${url}/rest/v1/events?is_active=eq.true&order=sort_order&limit=6&select=*`, {
-        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-      });
-      const eventsData = await eventsRes.json();
-      console.log("[Index] Events:", eventsRes.status, Array.isArray(eventsData) ? eventsData.length : "not array");
-      if (Array.isArray(eventsData)) setFeaturedEvents(eventsData as Event[]);
+      if (eventsData) setFeaturedEvents(eventsData as Event[]);
     } catch (err) {
       console.error("[Index] Fetch error:", err);
     } finally {
