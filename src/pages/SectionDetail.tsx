@@ -90,13 +90,14 @@ const SectionDetail = () => {
   const dayLabels = ["11 Ago", "12 Ago", "13 Ago"];
 
   const isConcerti = section?.icon === "Music";
+  const hasDayFilter = isConcerti;
 
   // Get unique stages from events
   const stages = [...new Set(events.map(e => e.stage).filter(Boolean))];
 
-  // Filter by day + optionally by stage
+  // Filter by day (only for Concerti) + optionally by stage
   const filteredEvents = events.filter((e) => {
-    if (e.day !== selectedDay) return false;
+    if (hasDayFilter && e.day !== selectedDay) return false;
     if (selectedStage && e.stage !== selectedStage) return false;
     return true;
   });
@@ -160,8 +161,8 @@ const SectionDetail = () => {
         </div>
       )}
 
-      {/* Day selector */}
-      {events.length > 0 && events.some(e => e.day) && (
+      {/* Day selector (only for Concerti) */}
+      {hasDayFilter && events.length > 0 && (
         <div className="px-4 pt-3 flex gap-2">
           {days.map((day, i) => (
             <button
