@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useFavorites } from "@/hooks/use-favorites";
+import { supabaseFetchSingle } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User, LogOut, LogIn, Shield, Heart, Lock, Mail,
@@ -32,14 +33,12 @@ const Profile = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("profiles")
-      .select("username, email, marketing_consent, created_at")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) setProfile(data);
-      });
+    supabaseFetchSingle<ProfileData>(
+      "profiles",
+      `user_id=eq.${user.id}&select=username,email,marketing_consent,created_at`
+    ).then((data) => {
+      if (data) setProfile(data);
+    });
   }, [user]);
 
   const handleChangePassword = async () => {

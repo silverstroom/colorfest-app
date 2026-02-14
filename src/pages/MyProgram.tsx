@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch } from "@/lib/supabase-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/use-favorites";
 import { ArrowLeft, Heart, Clock, StickyNote, Trash2 } from "lucide-react";
@@ -52,12 +52,13 @@ const MyProgram = () => {
     const eventIds = favorites.map(f => f.event_id);
     if (eventIds.length === 0) { setEvents([]); return; }
 
-    const [eventsRes, sectionsRes] = await Promise.all([
-      supabase.from("events").select("*").in("id", eventIds),
-      supabase.from("festival_sections").select("id, name, icon"),
+    const idFilter = eventIds.map(id => `"${id}"`).join(",");
+    const [eventsData, sectionsData] = await Promise.all([
+      supabaseFetch("events", `id=in.(${idFilter})&select=*`),
+      supabaseFetch("festival_sections", "select=id,name,icon"),
     ]);
-    if (eventsRes.data) setEvents(eventsRes.data as Event[]);
-    if (sectionsRes.data) setSections(sectionsRes.data as Section[]);
+    setEvents(eventsData as Event[]);
+    setSections(sectionsData as Section[]);
   };
 
   const formatTime = (iso: string | null) => {

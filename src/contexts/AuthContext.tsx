@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch } from "@/lib/supabase-fetch";
 import { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -27,13 +28,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAdmin = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    setIsAdmin(!!data);
+    try {
+      const data = await supabaseFetch(
+        "user_roles",
+        `user_id=eq.${userId}&role=eq.admin&select=role`
+      );
+      setIsAdmin(data.length > 0);
+    } catch {
+      setIsAdmin(false);
+    }
   };
 
   useEffect(() => {

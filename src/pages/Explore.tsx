@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseFetch } from "@/lib/supabase-fetch";
 import { useNavigate } from "react-router-dom";
 import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, ShoppingBag, Waves, ChevronRight } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
@@ -38,37 +38,16 @@ const Explore = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const url = import.meta.env.VITE_SUPABASE_URL;
-        const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        console.log("[Explore] ENV check - URL:", url, "KEY:", key ? key.substring(0, 20) + "..." : "MISSING");
-        
-        // Test direct fetch first to check connectivity
-        console.log("[Explore] Testing direct fetch...");
-        const testUrl = `${url}/rest/v1/festival_sections?is_active=eq.true&order=sort_order&select=*`;
-        const directRes = await fetch(testUrl, {
-          headers: {
-            'apikey': key,
-            'Authorization': `Bearer ${key}`,
-          }
-        });
-        const directData = await directRes.json();
-        console.log("[Explore] Direct fetch result:", directRes.status, "rows:", Array.isArray(directData) ? directData.length : "not array");
-        
-        if (Array.isArray(directData) && directData.length > 0) {
-          setSections(directData);
-        }
-
-        // Also fetch event counts
-        const evUrl = `${url}/rest/v1/events?is_active=eq.true&select=section_id`;
-        const evDirectRes = await fetch(evUrl, {
-          headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
-        });
-        const evData = await evDirectRes.json();
-        if (Array.isArray(evData)) {
-          const counts: Record<string, number> = {};
-          evData.forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
-          setEventCounts(counts);
-        }
+        setLoading(true);
+        setError(null);
+        const [sectionsData, eventsData] = await Promise.all([
+          supabaseFetch("festival_sections", "is_active=eq.true&order=sort_order&select=*"),
+          supabaseFetch("events", "is_active=eq.true&select=section_id"),
+        ]);
+        setSections(sectionsData);
+        const counts: Record<string, number> = {};
+        eventsData.forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
+        setEventCounts(counts);
       } catch (err: any) {
         console.error("[Explore] Fetch error:", err);
         setError(err.message || "Errore nel caricamento");
