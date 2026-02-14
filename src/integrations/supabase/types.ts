@@ -43,6 +43,7 @@ export type Database = {
           day: number | null
           description: string | null
           end_time: string | null
+          featured: boolean
           id: string
           image_url: string | null
           is_active: boolean
@@ -61,6 +62,7 @@ export type Database = {
           day?: number | null
           description?: string | null
           end_time?: string | null
+          featured?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -79,6 +81,7 @@ export type Database = {
           day?: number | null
           description?: string | null
           end_time?: string | null
+          featured?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean

@@ -3,7 +3,7 @@ import { supabaseFetch } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera, Palette } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Eye, Sparkles, Camera, Palette, Star } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
 import NotificationBell from "@/components/NotificationBell";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ interface Event {
   stage: string;
   day: number;
   section_id: string;
+  featured: boolean;
 }
 
 interface AppSetting {
@@ -66,9 +67,11 @@ const Index = () => {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [showOverlayEditor, setShowOverlayEditor] = useState(false);
+  const [showFeaturedEditor, setShowFeaturedEditor] = useState(false);
   const [overlayColor, setOverlayColor] = useState("#3B5BDB");
   const [overlayOpacity, setOverlayOpacity] = useState(80);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +84,7 @@ const Index = () => {
     try {
       const [settingsData, eventsData] = await Promise.all([
         supabaseFetch("app_settings", "select=*"),
-        supabaseFetch("events", "is_active=eq.true&order=sort_order&limit=6&select=*"),
+        supabaseFetch("events", "is_active=eq.true&order=sort_order&select=*"),
       ]);
       if (settingsData) {
         const map: Record<string, string> = {};
@@ -90,7 +93,11 @@ const Index = () => {
         if (map.hero_overlay_color) setOverlayColor(map.hero_overlay_color);
         if (map.hero_overlay_opacity) setOverlayOpacity(Number(map.hero_overlay_opacity));
       }
-      if (eventsData) setFeaturedEvents(eventsData as Event[]);
+      if (eventsData) {
+        const all = eventsData as Event[];
+        setAllEvents(all);
+        setFeaturedEvents(all.filter((e) => e.featured));
+      }
     } catch (err) {
       console.error("[Index] Fetch error:", err);
     } finally {
@@ -160,6 +167,27 @@ const Index = () => {
     setSettings((prev) => ({ ...prev, hero_overlay_color: overlayColor, hero_overlay_opacity: String(overlayOpacity) }));
     toast({ title: "Overlay aggiornato ✓" });
     setShowOverlayEditor(false);
+  };
+
+  const toggleFeatured = async (eventId: string, currentVal: boolean) => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const headers: Record<string, string> = {
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/events?id=eq.${eventId}`,
+      { method: "PATCH", headers, body: JSON.stringify({ featured: !currentVal }) }
+    );
+    setAllEvents((prev) =>
+      prev.map((e) => (e.id === eventId ? { ...e, featured: !currentVal } : e))
+    );
+    setFeaturedEvents((prev) =>
+      !currentVal
+        ? [...prev, allEvents.find((e) => e.id === eventId)!].filter(Boolean)
+        : prev.filter((e) => e.id !== eventId)
+    );
   };
 
   const greeting = useMemo(() => {
@@ -312,14 +340,60 @@ const Index = () => {
       </section>
 
       {/* Featured events */}
-      {featuredEvents.length > 0 && (
-        <section className="px-4 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-foreground">In evidenza</h2>
+      <section className="px-4 pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-foreground">In evidenza</h2>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => setShowFeaturedEditor(!showFeaturedEditor)}
+                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                title="Gestisci in evidenza"
+              >
+                <Star className="w-4 h-4 text-primary" />
+              </button>
+            )}
             <AdminEditButton tab="events" />
           </div>
+        </div>
+
+        {/* Admin featured editor */}
+        {showFeaturedEditor && isAdmin && (
+          <div className="bg-card rounded-2xl shadow-elevated p-4 mb-4 border border-border">
+            <h3 className="text-sm font-bold text-foreground mb-3">Scegli gli eventi in evidenza</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {allEvents.filter(e => e.artist !== "TBA").map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => toggleFeatured(event.id, event.featured)}
+                  className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors text-left"
+                >
+                  <Star
+                    className={`w-5 h-5 shrink-0 transition-colors ${
+                      event.featured
+                        ? "text-secondary fill-secondary"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{event.title}</p>
+                    {event.stage && <p className="text-[10px] text-muted-foreground">{event.stage}</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowFeaturedEditor(false)}
+              className="mt-3 w-full bg-muted text-muted-foreground rounded-xl py-2 text-sm font-semibold hover:bg-muted/80 transition-colors"
+            >
+              Chiudi
+            </button>
+          </div>
+        )}
+
+        {featuredEvents.length > 0 ? (
           <div className="space-y-3">
-            {featuredEvents.filter(e => e.artist !== "TBA").slice(0, 4).map((event) => {
+            {featuredEvents.map((event) => {
               const imgSrc = localImages[event.title] || localImages[event.artist] || event.image_url;
               const viewers = getViewerCount(event.id);
 
@@ -358,8 +432,14 @@ const Index = () => {
               );
             })}
           </div>
-        </section>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            {isAdmin ? "Clicca la ⭐ per scegliere gli eventi in evidenza" : "Nessun evento in evidenza"}
+          </p>
+        )}
+      </section>
+
+
 
       {/* Footer */}
       <footer className="px-4 pt-8 pb-4 text-center text-xs text-muted-foreground">
