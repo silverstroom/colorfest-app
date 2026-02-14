@@ -1,0 +1,1 @@
+ALTER TABLE public.events ADD COLUMN featured boolean NOT NULL DEFAULT false;
