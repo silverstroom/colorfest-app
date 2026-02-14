@@ -1,38 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, Calendar, ChevronRight, ShoppingBag, Waves, Heart } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Calendar, MapPin, ChevronRight, Users, Eye } from "lucide-react";
 import logo from "@/assets/logo_white.png";
 import poster from "@/assets/poster.jpeg";
 
-const iconMap: Record<string, any> = {
-  Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, ShoppingBag, Waves,
+// Local artist images
+import imgApparat from "@/assets/artists/apparat.webp";
+import imgYinYin from "@/assets/artists/yinyin.webp";
+import imgGaiaBanfi from "@/assets/artists/gaia-banfi.webp";
+import imgCmonTigre from "@/assets/artists/cmon-tigre.webp";
+import imgMaiMaiMai from "@/assets/artists/mai-mai-mai.webp";
+import imgLaNina from "@/assets/artists/la-nina.webp";
+import imgTheZenCircus from "@/assets/artists/the-zen-circus.webp";
+import imgDeadletter from "@/assets/artists/deadletter.webp";
+
+const localImages: Record<string, string> = {
+  "Apparat (live)": imgApparat,
+  "Apparat": imgApparat,
+  "Yīn Yīn": imgYinYin,
+  "Gaia Banfi": imgGaiaBanfi,
+  "C'Mon Tigre": imgCmonTigre,
+  "MAI MAI MAI": imgMaiMaiMai,
+  "La Niña": imgLaNina,
+  "The Zen Circus": imgTheZenCircus,
+  "Deadletter": imgDeadletter,
 };
 
-// Distinct color schemes per section (bg, text, icon-bg)
-const sectionColors: Record<string, { bg: string; iconBg: string; iconText: string }> = {
-  Music:            { bg: "bg-red-50 dark:bg-red-950/30",      iconBg: "bg-red-500",      iconText: "text-white" },
-  Wine:             { bg: "bg-purple-50 dark:bg-purple-950/30", iconBg: "bg-purple-500",   iconText: "text-white" },
-  Beer:             { bg: "bg-amber-50 dark:bg-amber-950/30",   iconBg: "bg-amber-500",    iconText: "text-white" },
-  UtensilsCrossed:  { bg: "bg-orange-50 dark:bg-orange-950/30", iconBg: "bg-orange-500",   iconText: "text-white" },
-  Palette:          { bg: "bg-pink-50 dark:bg-pink-950/30",     iconBg: "bg-pink-500",     iconText: "text-white" },
-  Tent:             { bg: "bg-green-50 dark:bg-green-950/30",   iconBg: "bg-green-600",    iconText: "text-white" },
-  ShoppingBag:      { bg: "bg-teal-50 dark:bg-teal-950/30",     iconBg: "bg-teal-500",     iconText: "text-white" },
-  Waves:            { bg: "bg-cyan-50 dark:bg-cyan-950/30",     iconBg: "bg-cyan-500",     iconText: "text-white" },
-  MapPin:           { bg: "bg-blue-50 dark:bg-blue-950/30",     iconBg: "bg-blue-500",     iconText: "text-white" },
-};
-
-const defaultColors = { bg: "bg-card", iconBg: "bg-primary", iconText: "text-primary-foreground" };
-
-interface Section {
+interface Event {
   id: string;
-  name: string;
+  title: string;
+  artist: string;
   description: string;
-  icon: string;
-  sort_order: number;
-  is_active: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  image_url: string;
+  stage: string;
+  day: number;
+  section_id: string;
 }
 
 interface AppSetting {
@@ -40,168 +46,143 @@ interface AppSetting {
   value: string;
 }
 
+// Generate stable random viewer counts per event
+const getViewerCount = (eventId: string) => {
+  let hash = 0;
+  for (let i = 0; i < eventId.length; i++) {
+    hash = ((hash << 5) - hash) + eventId.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash % 88) + 3; // 3 to 90
+};
+
 const Index = () => {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [sections, setSections] = useState<Section[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const [sectionsRes, settingsRes] = await Promise.all([
-      supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order"),
+    const [settingsRes, eventsRes] = await Promise.all([
       supabase.from("app_settings").select("*"),
+      supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6),
     ]);
-    if (sectionsRes.data) setSections(sectionsRes.data);
     if (settingsRes.data) {
       const map: Record<string, string> = {};
       settingsRes.data.forEach((s: AppSetting) => { map[s.key] = s.value; });
       setSettings(map);
     }
+    if (eventsRes.data) setFeaturedEvents(eventsRes.data as Event[]);
   };
 
-  const getIcon = (iconName: string) => {
-    const Icon = iconMap[iconName] || MapPin;
-    return <Icon className="w-6 h-6" />;
-  };
-
-  const getColors = (iconName: string) => sectionColors[iconName] || defaultColors;
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Buongiorno";
+    if (h < 18) return "Buon pomeriggio";
+    return "Buonasera";
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-background pb-20">
+      {/* Hero compact */}
       <section className="relative overflow-hidden bg-primary text-primary-foreground">
         <div className="absolute inset-0 opacity-20">
           <img src={poster} alt="" className="w-full h-full object-cover" />
         </div>
-        <div className="relative z-10 px-4 py-12 pb-16">
-          <div className="flex items-center justify-between mb-8">
-            <img src={logo} alt="Color Fest" className="h-10" />
-            <div className="flex gap-2">
-              {isAdmin && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                  onClick={() => navigate("/admin")}
-                >
-                  Admin
-                </Button>
-              )}
-              {user ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                  onClick={signOut}
-                >
-                  Esci
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                  onClick={() => navigate("/auth")}
-                >
-                  Accedi
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="max-w-lg">
-            <h1 className="text-4xl md:text-5xl font-black leading-tight mb-3">
-              {settings.festival_name || "Color Fest XIV"}
-            </h1>
-            <p className="text-xl font-light opacity-90 mb-2">
-              {settings.festival_subtitle || "Quando Sulla Riva Verrai"}
-            </p>
-            <div className="flex items-center gap-2 mt-4 text-sm opacity-80">
-              <Calendar className="w-4 h-4" />
-              <span>{settings.festival_dates || "11-12-13 Agosto 2026"}</span>
-            </div>
-            <div className="flex items-center gap-2 mt-1 text-sm opacity-80">
-              <MapPin className="w-4 h-4" />
-              <span>{settings.festival_location || "Lungomare Falcone e Borsellino - Riviera dei Tramonti, Lamezia Terme"}</span>
-            </div>
+        <div className="relative z-10 px-5 pt-10 pb-14">
+          <img src={logo} alt="Color Fest" className="h-8 mb-6" />
+          <p className="text-sm opacity-70 mb-1">{greeting} 👋</p>
+          <h1 className="text-3xl font-black leading-tight">
+            {settings.festival_name || "Color Fest XIV"}
+          </h1>
+          <p className="text-base font-light opacity-80 mt-1">
+            {settings.festival_subtitle || "Quando Sulla Riva Verrai"}
+          </p>
+          <div className="flex items-center gap-4 mt-4 text-xs opacity-70">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              {settings.festival_dates || "11-12-13 Agosto 2026"}
+            </span>
           </div>
         </div>
-
-        {/* Wave separator */}
-        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none">
-          <path d="M0,40 C360,80 720,0 1440,40 L1440,60 L0,60 Z" fill="hsl(43 100% 96%)" />
+        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 40" fill="none" preserveAspectRatio="none">
+          <path d="M0,25 C360,50 720,0 1440,25 L1440,40 L0,40 Z" fill="hsl(43 100% 96%)" />
         </svg>
       </section>
 
-      {/* Map Button */}
-      <section className="px-4 -mt-4 relative z-20">
+      {/* Map card */}
+      <section className="px-4 -mt-5 relative z-20">
         <button
           onClick={() => navigate("/map")}
-          className="w-full bg-secondary text-secondary-foreground rounded-xl p-4 shadow-card flex items-center justify-between hover:shadow-elevated transition-shadow animate-pulse-glow"
+          className="w-full bg-secondary text-secondary-foreground rounded-2xl p-4 shadow-card flex items-center justify-between hover:shadow-elevated transition-shadow"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
               <MapPin className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="text-left">
-              <p className="font-bold text-lg">Mappa Interattiva</p>
-              <p className="text-sm opacity-70">Esplora il festival</p>
+              <p className="font-bold">Mappa Interattiva</p>
+              <p className="text-xs opacity-70">Esplora il festival</p>
             </div>
           </div>
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5 opacity-50" />
         </button>
-
-        {/* My Program button */}
-        {user && (
-          <button
-            onClick={() => navigate("/my-program")}
-            className="w-full mt-3 bg-card text-foreground rounded-xl p-4 shadow-card flex items-center justify-between hover:shadow-elevated transition-shadow"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
-                <Heart className="w-5 h-5 text-white" fill="white" />
-              </div>
-              <div className="text-left">
-                <p className="font-bold text-lg">Il mio programma</p>
-                <p className="text-sm text-muted-foreground">I tuoi eventi salvati</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </button>
-        )}
       </section>
 
-      {/* Sections Grid */}
-      <section className="px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">Esplora</h2>
-        <div className="grid grid-cols-2 gap-4">
-          {sections.map((section, i) => {
-            const colors = getColors(section.icon);
-            return (
-              <button
-                key={section.id}
-                onClick={() => navigate(`/section/${section.id}`)}
-                className={`${colors.bg} rounded-xl p-5 shadow-card text-left hover:shadow-elevated transition-all hover:-translate-y-1 animate-fade-in`}
-                style={{ animationDelay: `${i * 100}ms`, animationFillMode: "backwards" }}
-              >
-                <div className={`w-10 h-10 rounded-lg ${colors.iconBg} flex items-center justify-center mb-3 ${colors.iconText}`}>
-                  {getIcon(section.icon)}
-                </div>
-                <h3 className="font-bold text-foreground">{section.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{section.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* Featured events - card style like reference */}
+      {featuredEvents.length > 0 && (
+        <section className="px-4 pt-6">
+          <h2 className="text-xl font-bold mb-4 text-foreground">In evidenza</h2>
+          <div className="space-y-3">
+            {featuredEvents.filter(e => e.artist !== "TBA").slice(0, 4).map((event) => {
+              const imgSrc = localImages[event.title] || localImages[event.artist] || event.image_url;
+              const viewers = getViewerCount(event.id);
+
+              return (
+                <button
+                  key={event.id}
+                  onClick={() => navigate(`/section/${event.section_id}`)}
+                  className="w-full bg-card rounded-2xl shadow-card flex items-center gap-0 overflow-hidden text-left hover:shadow-elevated transition-shadow"
+                >
+                  <div className="flex-1 p-4 min-w-0">
+                    <h3 className="font-bold text-foreground text-base leading-tight truncate">{event.title}</h3>
+                    {event.stage && (
+                      <p className="text-xs text-muted-foreground mt-1">{event.stage}</p>
+                    )}
+                    {event.start_time && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(event.start_time).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 mt-2 text-xs text-primary font-medium">
+                      <Eye className="w-3 h-3" />
+                      <span>{viewers} persone stanno guardando</span>
+                    </div>
+                  </div>
+                  {imgSrc && (
+                    <div className="w-24 h-24 shrink-0">
+                      <img
+                        src={imgSrc}
+                        alt={event.title}
+                        className="w-full h-full object-cover rounded-r-2xl"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
-      <footer className="px-4 py-8 text-center text-sm text-muted-foreground">
-        <p>© 2026 Color Fest XIV Ed. - Tutti i diritti riservati</p>
+      <footer className="px-4 pt-8 pb-4 text-center text-xs text-muted-foreground">
+        <p>© 2026 Color Fest XIV Ed.</p>
       </footer>
     </div>
   );
