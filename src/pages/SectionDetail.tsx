@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/use-favorites";
-import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart } from "lucide-react";
+import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Local artist images
@@ -65,6 +65,16 @@ const toSpotifyEmbed = (url: string): string | null => {
   return null;
 };
 
+// Generate stable random viewer counts per event
+const getViewerCount = (eventId: string) => {
+  let hash = 0;
+  for (let i = 0; i < eventId.length; i++) {
+    hash = ((hash << 5) - hash) + eventId.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash % 88) + 3; // 3 to 90
+};
+
 const SectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -114,7 +124,7 @@ const SectionDetail = () => {
   if (!section) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 pb-8 relative">
         <Button
@@ -263,6 +273,14 @@ const SectionDetail = () => {
                     </button>
                   )}
                 </div>
+
+                {/* Viewers count */}
+                {!isTBA && (
+                  <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                    <Eye className="w-3 h-3" />
+                    <span>{getViewerCount(event.id)} persone stanno guardando</span>
+                  </div>
+                )}
 
                 {/* Description */}
                 {event.description && (
