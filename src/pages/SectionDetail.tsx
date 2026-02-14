@@ -61,7 +61,7 @@ const stageColors: Record<string, { bg: string; text: string }> = {
 const toSpotifyEmbed = (url: string): string | null => {
   if (!url) return null;
   if (url.includes("/embed/")) return url;
-  const match = url.match(/open\.spotify\.com\/(artist|track|album)\/([a-zA-Z0-9]+)/);
+  const match = url.match(/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:embed\/)?(artist|track|album)\/([a-zA-Z0-9]+)/);
   if (match) return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
   return null;
 };
@@ -321,7 +321,7 @@ const SectionDetail = () => {
                       onClick={() => setExpandedEvent(isExpanded ? null : event.id)}
                       className="text-xs text-primary font-bold uppercase tracking-wide"
                     >
-                      {isExpanded ? "▲ Nascondi bio" : "▼ Leggi la bio"}
+                      {isExpanded ? "▲ Nascondi" : "▼ Leggi di più"}
                     </button>
                     {isExpanded && (
                       <p className="text-sm text-foreground/80 leading-relaxed mt-2 animate-fade-in">
