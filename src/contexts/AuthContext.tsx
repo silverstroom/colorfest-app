@@ -51,6 +51,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // If user didn't check "Ricordami" and this is a new browser session, sign out
+      const remembered = localStorage.getItem("colorfest_remember");
+      const sessionActive = sessionStorage.getItem("colorfest_session_active");
+      if (session?.user && !remembered && !sessionActive) {
+        supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {

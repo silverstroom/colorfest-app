@@ -15,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -39,6 +40,13 @@ const Auth = () => {
         }
         const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) throw error;
+        // Store remember preference
+        if (rememberMe) {
+          localStorage.setItem("colorfest_remember", "true");
+        } else {
+          localStorage.removeItem("colorfest_remember");
+          sessionStorage.setItem("colorfest_session_active", "true");
+        }
         toast.success("Accesso effettuato!");
         navigate("/");
       } else {
@@ -123,6 +131,19 @@ const Auth = () => {
               minLength={6}
             />
           </div>
+
+          {isLogin && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+              />
+              <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+                Ricordami
+              </Label>
+            </div>
+          )}
 
           {!isLogin && (
             <div className="flex items-center space-x-2">
