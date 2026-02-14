@@ -70,13 +70,12 @@ const Index = () => {
 
   const fetchData = async () => {
     try {
+      console.log("[Index] Starting fetch. SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL ? "SET" : "MISSING");
       setLoading(true);
-      const [settingsRes, eventsRes] = await Promise.all([
-        supabase.from("app_settings").select("*"),
-        supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6),
-      ]);
-      if (settingsRes.error) console.error("Settings fetch error:", settingsRes.error);
-      if (eventsRes.error) console.error("Events fetch error:", eventsRes.error);
+      const settingsRes = await supabase.from("app_settings").select("*");
+      console.log("[Index] Settings result:", { data: settingsRes.data?.length, error: settingsRes.error });
+      const eventsRes = await supabase.from("events").select("*").eq("is_active", true).order("sort_order").limit(6);
+      console.log("[Index] Events result:", { data: eventsRes.data?.length, error: eventsRes.error });
       if (settingsRes.data) {
         const map: Record<string, string> = {};
         settingsRes.data.forEach((s: AppSetting) => { map[s.key] = s.value; });
@@ -84,7 +83,7 @@ const Index = () => {
       }
       if (eventsRes.data) setFeaturedEvents(eventsRes.data as Event[]);
     } catch (err) {
-      console.error("Index fetch error:", err);
+      console.error("[Index] Fetch error:", err);
     } finally {
       setLoading(false);
     }

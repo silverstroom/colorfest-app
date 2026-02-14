@@ -38,12 +38,13 @@ const Explore = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("[Explore] Starting fetch. SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL ? "SET" : "MISSING");
         setLoading(true);
         setError(null);
-        const [secRes, evRes] = await Promise.all([
-          supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order"),
-          supabase.from("events").select("section_id").eq("is_active", true),
-        ]);
+        const secRes = await supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order");
+        console.log("[Explore] Sections result:", { data: secRes.data?.length, error: secRes.error });
+        const evRes = await supabase.from("events").select("section_id").eq("is_active", true);
+        console.log("[Explore] Events result:", { data: evRes.data?.length, error: evRes.error });
         if (secRes.error) throw secRes.error;
         if (evRes.error) throw evRes.error;
         setSections(secRes.data || []);
@@ -51,7 +52,7 @@ const Explore = () => {
         (evRes.data || []).forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
         setEventCounts(counts);
       } catch (err: any) {
-        console.error("Explore fetch error:", err);
+        console.error("[Explore] Fetch error:", err);
         setError(err.message || "Errore nel caricamento");
       } finally {
         setLoading(false);
