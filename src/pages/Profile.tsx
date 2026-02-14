@@ -6,12 +6,13 @@ import { supabaseFetchSingle } from "@/lib/supabase-fetch";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User, LogOut, LogIn, Shield, Heart, Lock, Mail,
-  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil, Camera, Users,
+  ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil, Camera, Users, Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface ProfileData {
   username: string;
@@ -26,6 +27,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { favorites } = useFavorites();
   const { toast } = useToast();
+  const { remindersEnabled, setRemindersEnabled } = useNotifications();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -276,6 +278,20 @@ const Profile = () => {
                 checked={profile?.marketing_consent ?? false}
                 onCheckedChange={handleToggleMarketing}
                 disabled={togglingMarketing}
+              />
+            </div>
+            <div className="p-4 flex items-center gap-3">
+              <Bell className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Promemoria eventi</p>
+                <p className="text-xs text-muted-foreground">Avviso 15 min prima degli eventi preferiti</p>
+              </div>
+              <Switch
+                checked={remindersEnabled}
+                onCheckedChange={(v) => {
+                  setRemindersEnabled(v);
+                  toast({ title: v ? "Promemoria attivati ✓" : "Promemoria disattivati" });
+                }}
               />
             </div>
           </div>
