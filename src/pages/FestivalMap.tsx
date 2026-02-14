@@ -188,7 +188,7 @@ const FestivalMap = () => {
                 {isStage ? "♪" : area.name.charAt(0)}
               </span>
             </span>
-            {(isStage || isSelected || editMode) && (
+            {(isSelected || editMode) && (
               <span className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold leading-none whitespace-nowrap ${
                 isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
               }`}>
