@@ -38,6 +38,7 @@ export type Database = {
       events: {
         Row: {
           artist: string | null
+          bio: string | null
           created_at: string
           day: number | null
           description: string | null
@@ -47,6 +48,7 @@ export type Database = {
           is_active: boolean
           section_id: string
           sort_order: number
+          spotify_url: string | null
           stage: string | null
           start_time: string | null
           title: string
@@ -54,6 +56,7 @@ export type Database = {
         }
         Insert: {
           artist?: string | null
+          bio?: string | null
           created_at?: string
           day?: number | null
           description?: string | null
@@ -63,6 +66,7 @@ export type Database = {
           is_active?: boolean
           section_id: string
           sort_order?: number
+          spotify_url?: string | null
           stage?: string | null
           start_time?: string | null
           title: string
@@ -70,6 +74,7 @@ export type Database = {
         }
         Update: {
           artist?: string | null
+          bio?: string | null
           created_at?: string
           day?: number | null
           description?: string | null
@@ -79,6 +84,7 @@ export type Database = {
           is_active?: boolean
           section_id?: string
           sort_order?: number
+          spotify_url?: string | null
           stage?: string | null
           start_time?: string | null
           title?: string
