@@ -36,7 +36,8 @@ const areaZones: AreaZone[] = [
   { label: "🎵 Palchi", color: "bg-red-500", borderColor: "border-red-400", icons: ["Music", "Disc3", "Guitar"] },
   { label: "🍽️ Food & Drink", color: "bg-orange-500", borderColor: "border-orange-400", icons: ["UtensilsCrossed", "Wine", "Beer"] },
   { label: "🎨 Cultura", color: "bg-pink-500", borderColor: "border-pink-400", icons: ["Palette"] },
-  { label: "🛍️ Servizi", color: "bg-blue-500", borderColor: "border-blue-400", icons: ["ShoppingBag", "Ticket", "Bath", "LogOut"] },
+  { label: "🛍️ Stand & Market", color: "bg-teal-500", borderColor: "border-teal-400", icons: ["ShoppingBag"] },
+  { label: "📍 Servizi", color: "bg-blue-500", borderColor: "border-blue-400", icons: ["Ticket", "Bath", "LogOut"] },
 ];
 
 const getZoneForIcon = (icon: string): AreaZone | undefined => areaZones.find(z => z.icons.includes(icon));
