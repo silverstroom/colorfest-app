@@ -9,6 +9,7 @@ import {
   ChevronRight, Calendar, CheckCircle2, XCircle, Megaphone, Pencil, Camera, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -271,13 +272,11 @@ const Profile = () => {
                 <p className="text-sm font-semibold text-foreground">Comunicazioni e novità</p>
                 <p className="text-xs text-muted-foreground">Ricevi aggiornamenti su eventi e promozioni</p>
               </div>
-              <button onClick={handleToggleMarketing} disabled={togglingMarketing} className="shrink-0">
-                {profile?.marketing_consent ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
-                ) : (
-                  <XCircle className="w-6 h-6 text-muted-foreground/40" />
-                )}
-              </button>
+              <Switch
+                checked={profile?.marketing_consent ?? false}
+                onCheckedChange={handleToggleMarketing}
+                disabled={togglingMarketing}
+              />
             </div>
           </div>
         </section>
