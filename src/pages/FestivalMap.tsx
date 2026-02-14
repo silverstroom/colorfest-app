@@ -166,7 +166,7 @@ const FestivalMap = () => {
             onTouchStart={() => {
               if (editMode) { setDragging(area.id); }
             }}
-            onClick={() => { if (!editMode) setSelectedArea(area); }}
+            onClick={() => { if (!editMode) { setSelectedArea(area); scrollContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); if (!isMobile && mapRef.current) mapRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); } }}
             className={`absolute flex flex-col items-center transition-all ${
               editMode ? "cursor-grab" : ""
             } ${isDragging ? "cursor-grabbing z-50 scale-125" : ""} ${
@@ -394,7 +394,7 @@ const FestivalMap = () => {
                   {zoneAreas.map((area) => (
                     <button
                       key={area.id}
-                      onClick={() => setSelectedArea(area)}
+                      onClick={() => { setSelectedArea(area); if (scrollContainerRef.current) scrollContainerRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); else if (mapRef.current) mapRef.current.scrollIntoView({ behavior: "smooth", block: "start" }); }}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
                         selectedArea?.id === area.id
                           ? "bg-primary/10 border-l-4 border-primary"
