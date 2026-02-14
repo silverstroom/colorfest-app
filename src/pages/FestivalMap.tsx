@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,7 @@ const markerColorByIcon: Record<string, string> = {
 const FestivalMap = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const highlight = searchParams.get("highlight");
   const [areas, setAreas] = useState<MapArea[]>([]);
@@ -71,6 +73,7 @@ const FestivalMap = () => {
   const [dragging, setDragging] = useState<string | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Set<string>>(new Set());
   const mapRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -138,6 +141,60 @@ const FestivalMap = () => {
     setUnsavedChanges(new Set());
     toast.success(`${toSave.length} posizioni salvate!`);
   };
+
+  const renderMarkers = useCallback(() => (
+    <>
+      {areas.map((area) => {
+        const colors = markerColorByIcon[area.icon] || "bg-primary border-primary/50";
+        const isVisible = !activeZone || visibleAreas.some(a => a.id === area.id);
+        const isSelected = selectedArea?.id === area.id;
+        const isStage = Object.keys(stageColors).includes(area.name);
+        const isDragging = dragging === area.id;
+        const hasUnsaved = unsavedChanges.has(area.id);
+
+        return (
+          <div
+            key={area.id}
+            onMouseDown={(e) => {
+              if (editMode) { e.preventDefault(); setDragging(area.id); }
+            }}
+            onTouchStart={() => {
+              if (editMode) { setDragging(area.id); }
+            }}
+            onClick={() => { if (!editMode) setSelectedArea(area); }}
+            className={`absolute flex flex-col items-center transition-all ${
+              editMode ? "cursor-grab" : ""
+            } ${isDragging ? "cursor-grabbing z-50 scale-125" : ""} ${
+              isVisible ? "opacity-100" : "opacity-20 pointer-events-none"
+            } ${!editMode && isSelected ? "scale-125 z-20" : !editMode ? "hover:scale-110 z-10" : "z-10"}`}
+            style={{
+              left: `${area.x_percent}%`,
+              top: `${area.y_percent}%`,
+              transform: "translate(-50%, -100%)",
+              transitionDuration: isDragging ? "0ms" : "300ms",
+            }}
+          >
+            <span
+              className={`flex items-center justify-center shadow-lg border-2 ${colors} ${
+                isSelected && !editMode ? "animate-pulse-glow" : ""
+              } ${hasUnsaved && editMode ? "ring-2 ring-yellow-400" : ""} ${isStage ? "w-10 h-10 rounded-lg" : "w-8 h-8 rounded-full"}`}
+            >
+              <span className="text-white text-[11px] font-black leading-none">
+                {isStage ? "♪" : area.name.charAt(0)}
+              </span>
+            </span>
+            {(isStage || isSelected || editMode) && (
+              <span className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold leading-none whitespace-nowrap ${
+                isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
+              }`}>
+                {area.name.length > 18 ? area.name.substring(0, 16) + "…" : area.name}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
+  ), [areas, activeZone, visibleAreas, selectedArea, dragging, unsavedChanges, editMode]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,76 +265,51 @@ const FestivalMap = () => {
         ))}
       </div>
 
-      {/* Map Container */}
-      <div
-        ref={mapRef}
-        className={`relative mx-4 mt-3 bg-card rounded-xl shadow-elevated overflow-hidden ${editMode ? "cursor-crosshair" : ""}`}
-        onMouseMove={editMode ? handlePointerMove : undefined}
-        onMouseUp={editMode ? handlePointerUp : undefined}
-        onMouseLeave={editMode ? handlePointerUp : undefined}
-        onTouchMove={editMode ? handlePointerMove : undefined}
-        onTouchEnd={editMode ? handlePointerUp : undefined}
-      >
-        <img
-          src={mapImage}
-          alt="Mappa Color Fest"
-          className="w-full h-auto block select-none pointer-events-none"
-          draggable={false}
-        />
-
-        {/* Interactive markers overlay */}
-        {areas.map((area) => {
-          const colors = markerColorByIcon[area.icon] || "bg-primary border-primary/50";
-          const isVisible = !activeZone || visibleAreas.some(a => a.id === area.id);
-          const isSelected = selectedArea?.id === area.id;
-          const isStage = Object.keys(stageColors).includes(area.name);
-          const isDragging = dragging === area.id;
-          const hasUnsaved = unsavedChanges.has(area.id);
-
-          return (
-            <div
-              key={area.id}
-              onMouseDown={(e) => {
-                if (editMode) { e.preventDefault(); setDragging(area.id); }
-              }}
-              onTouchStart={(e) => {
-                if (editMode) { setDragging(area.id); }
-              }}
-              onClick={() => { if (!editMode) setSelectedArea(area); }}
-              className={`absolute flex flex-col items-center transition-all ${
-                editMode ? "cursor-grab" : ""
-              } ${isDragging ? "cursor-grabbing z-50 scale-125" : ""} ${
-                isVisible ? "opacity-100" : "opacity-20 pointer-events-none"
-              } ${!editMode && isSelected ? "scale-125 z-20" : !editMode ? "hover:scale-110 z-10" : "z-10"}`}
-              style={{
-                left: `${area.x_percent}%`,
-                top: `${area.y_percent}%`,
-                transform: "translate(-50%, -100%)",
-                transitionDuration: isDragging ? "0ms" : "300ms",
-              }}
-            >
-              {/* Pin shape */}
-              <span
-                className={`flex items-center justify-center shadow-lg border-2 ${colors} ${
-                  isSelected && !editMode ? "animate-pulse-glow" : ""
-                } ${hasUnsaved && editMode ? "ring-2 ring-yellow-400" : ""} ${isStage ? "w-10 h-10 rounded-lg" : "w-8 h-8 rounded-full"}`}
-              >
-                <span className="text-white text-[11px] font-black leading-none">
-                  {isStage ? "♪" : area.name.charAt(0)}
-                </span>
-              </span>
-              {/* Label - always visible in edit mode and for stages */}
-              {(isStage || isSelected || editMode) && (
-                <span className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold leading-none whitespace-nowrap ${
-                  isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
-                }`}>
-                  {area.name.length > 18 ? area.name.substring(0, 16) + "…" : area.name}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Map Container - scrollable 1:1 viewport on mobile */}
+      {isMobile ? (
+        <div
+          ref={scrollContainerRef}
+          className="mx-4 mt-3 rounded-xl shadow-elevated overflow-auto aspect-square"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div
+            ref={mapRef}
+            className={`relative ${editMode ? "cursor-crosshair" : ""}`}
+            style={{ width: "180vw", height: "auto" }}
+            onMouseMove={editMode ? handlePointerMove : undefined}
+            onMouseUp={editMode ? handlePointerUp : undefined}
+            onMouseLeave={editMode ? handlePointerUp : undefined}
+            onTouchMove={editMode ? handlePointerMove : undefined}
+            onTouchEnd={editMode ? handlePointerUp : undefined}
+          >
+            <img
+              src={mapImage}
+              alt="Mappa Color Fest"
+              className="w-full h-auto block select-none pointer-events-none"
+              draggable={false}
+            />
+            {renderMarkers()}
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={mapRef}
+          className={`relative mx-4 mt-3 bg-card rounded-xl shadow-elevated overflow-hidden ${editMode ? "cursor-crosshair" : ""}`}
+          onMouseMove={editMode ? handlePointerMove : undefined}
+          onMouseUp={editMode ? handlePointerUp : undefined}
+          onMouseLeave={editMode ? handlePointerUp : undefined}
+          onTouchMove={editMode ? handlePointerMove : undefined}
+          onTouchEnd={editMode ? handlePointerUp : undefined}
+        >
+          <img
+            src={mapImage}
+            alt="Mappa Color Fest"
+            className="w-full h-auto block select-none pointer-events-none"
+            draggable={false}
+          />
+          {renderMarkers()}
+        </div>
+      )}
 
       {/* Selected area info */}
       {selectedArea && (
