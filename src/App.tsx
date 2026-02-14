@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import BottomNav from "@/components/BottomNav";
+import TicketButton from "@/components/TicketButton";
 import RegistrationGate from "./components/RegistrationGate";
 import EventReminders from "./components/EventReminders";
 import Index from "./pages/Index";
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/my-program" element={<MyProgram />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <TicketButton />
             <BottomNav />
           </NotificationProvider>
         </AuthProvider>
