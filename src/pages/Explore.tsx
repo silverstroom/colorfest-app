@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, ShoppingBag, Waves, Search } from "lucide-react";
+import { Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, ShoppingBag, Waves, ChevronRight } from "lucide-react";
+import AdminEditButton from "@/components/AdminEditButton";
 
 const iconMap: Record<string, any> = {
   Music, Wine, UtensilsCrossed, Beer, Palette, Tent, MapPin, ShoppingBag, Waves,
 };
 
-const sectionColors: Record<string, { bg: string; iconBg: string }> = {
-  Music:            { bg: "bg-red-500",    iconBg: "bg-red-500" },
-  Wine:             { bg: "bg-purple-500", iconBg: "bg-purple-500" },
-  Beer:             { bg: "bg-amber-500",  iconBg: "bg-amber-500" },
-  UtensilsCrossed:  { bg: "bg-orange-500", iconBg: "bg-orange-500" },
-  Palette:          { bg: "bg-pink-500",   iconBg: "bg-pink-500" },
-  Tent:             { bg: "bg-green-600",  iconBg: "bg-green-600" },
-  ShoppingBag:      { bg: "bg-teal-500",   iconBg: "bg-teal-500" },
-  Waves:            { bg: "bg-cyan-500",   iconBg: "bg-cyan-500" },
-  MapPin:           { bg: "bg-blue-500",   iconBg: "bg-blue-500" },
+const sectionColors: Record<string, string> = {
+  Music: "from-red-500 to-red-600",
+  Wine: "from-purple-500 to-purple-600",
+  Beer: "from-amber-500 to-amber-600",
+  UtensilsCrossed: "from-orange-500 to-orange-600",
+  Palette: "from-pink-500 to-pink-600",
+  Tent: "from-green-500 to-green-600",
+  ShoppingBag: "from-teal-500 to-teal-600",
+  Waves: "from-cyan-500 to-cyan-600",
+  MapPin: "from-blue-500 to-blue-600",
 };
 
 interface Section {
@@ -30,43 +31,64 @@ interface Section {
 const Explore = () => {
   const navigate = useNavigate();
   const [sections, setSections] = useState<Section[]>([]);
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    supabase
-      .from("festival_sections")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order")
-      .then(({ data }) => { if (data) setSections(data); });
+    const fetchData = async () => {
+      const [secRes, evRes] = await Promise.all([
+        supabase.from("festival_sections").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("events").select("section_id").eq("is_active", true),
+      ]);
+      if (secRes.data) setSections(secRes.data);
+      if (evRes.data) {
+        const counts: Record<string, number> = {};
+        evRes.data.forEach((e: any) => { counts[e.section_id] = (counts[e.section_id] || 0) + 1; });
+        setEventCounts(counts);
+      }
+    };
+    fetchData();
   }, []);
 
   const getIcon = (iconName: string) => {
     const Icon = iconMap[iconName] || MapPin;
-    return <Icon className="w-5 h-5 text-white" />;
+    return <Icon className="w-6 h-6 text-white" />;
   };
 
-  const getColor = (iconName: string) => sectionColors[iconName]?.bg || "bg-primary";
+  const getGradient = (iconName: string) => sectionColors[iconName] || "from-primary to-primary";
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="px-4 pt-6 pb-2">
-        <h1 className="text-3xl font-black text-foreground">Esplora</h1>
-        <p className="text-muted-foreground text-sm mt-1">Scopri tutte le aree del festival</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-foreground">Esplora</h1>
+            <p className="text-muted-foreground text-sm mt-1">Scopri tutte le aree del festival</p>
+          </div>
+          <AdminEditButton tab="sections" />
+        </div>
       </div>
 
-      {/* Category pills */}
-      <div className="px-4 py-4 grid grid-cols-2 gap-3">
+      <div className="px-4 py-4 space-y-3">
         {sections.map((section, i) => (
           <button
             key={section.id}
             onClick={() => navigate(`/section/${section.id}`)}
-            className={`${getColor(section.icon)} text-white rounded-2xl p-4 text-left shadow-card hover:opacity-90 transition-all animate-fade-in`}
-            style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+            className="w-full bg-card rounded-2xl shadow-card p-4 flex items-center gap-4 text-left hover:shadow-elevated transition-all active:scale-[0.98] animate-fade-in"
+            style={{ animationDelay: `${i * 50}ms`, animationFillMode: "backwards" }}
           >
-            <div className="flex items-center gap-2 mb-1">
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${getGradient(section.icon)} flex items-center justify-center shrink-0`}>
               {getIcon(section.icon)}
-              <span className="font-bold text-sm">{section.name}</span>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-foreground">{section.name}</p>
+              {section.description && (
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{section.description}</p>
+              )}
+              {eventCounts[section.id] && (
+                <p className="text-[10px] text-primary font-semibold mt-1">{eventCounts[section.id]} eventi</p>
+              )}
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </button>
         ))}
       </div>
