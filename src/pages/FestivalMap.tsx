@@ -277,7 +277,7 @@ const FestivalMap = () => {
       {isMobile ? (
         <div
           ref={scrollContainerRef}
-          className="mx-4 mt-3 rounded-xl shadow-elevated overflow-auto aspect-square"
+          className="mx-4 mt-3 rounded-xl shadow-elevated overflow-auto"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div
