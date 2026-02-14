@@ -402,7 +402,6 @@ const FestivalMap = () => {
                       }`}
                     >
                       <p className="font-semibold text-foreground">{area.name}</p>
-                      <p className="text-xs text-muted-foreground">{area.description}</p>
                     </button>
                   ))}
                 </div>
