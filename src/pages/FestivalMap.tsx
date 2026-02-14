@@ -72,17 +72,22 @@ const FestivalMap = () => {
   const [editMode, setEditMode] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       supabase.from("map_areas").select("*").eq("is_active", true),
       supabase.from("events").select("title, artist, day, stage").eq("is_active", true).neq("artist", "TBA").neq("artist", "").neq("stage", "").order("day").order("sort_order"),
     ]).then(([areasRes, eventsRes]) => {
+      if (areasRes.error) console.error("Map areas fetch error:", areasRes.error);
+      if (eventsRes.error) console.error("Map events fetch error:", eventsRes.error);
       if (areasRes.data) setAreas(areasRes.data);
       if (eventsRes.data) setStageArtists(eventsRes.data as StageArtist[]);
-    });
+    }).catch(err => console.error("Map fetch error:", err))
+    .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
