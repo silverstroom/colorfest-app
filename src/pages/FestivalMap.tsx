@@ -68,7 +68,7 @@ const FestivalMap = () => {
   useEffect(() => {
     Promise.all([
       supabase.from("map_areas").select("*").eq("is_active", true),
-      supabase.from("events").select("title, artist, day, stage").eq("is_active", true).neq("artist", "TBA").order("day").order("sort_order"),
+      supabase.from("events").select("title, artist, day, stage").eq("is_active", true).neq("artist", "TBA").neq("artist", "").neq("stage", "").order("day").order("sort_order"),
     ]).then(([areasRes, eventsRes]) => {
       if (areasRes.data) setAreas(areasRes.data);
       if (eventsRes.data) setStageArtists(eventsRes.data as StageArtist[]);
@@ -174,15 +174,15 @@ const FestivalMap = () => {
               <span
                 className={`flex items-center justify-center shadow-lg border-2 ${colors} ${
                   isSelected ? "animate-pulse-glow" : ""
-                } ${isStage ? "w-8 h-8 rounded-lg" : "w-6 h-6 rounded-full"}`}
+                } ${isStage ? "w-10 h-10 rounded-lg" : "w-8 h-8 rounded-full"}`}
               >
-                <span className="text-white text-[9px] font-black leading-none">
+                <span className="text-white text-[11px] font-black leading-none">
                   {isStage ? "♪" : area.name.charAt(0)}
                 </span>
               </span>
               {/* Label - always visible for stages, on select for others */}
               {(isStage || isSelected) && (
-                <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold leading-none whitespace-nowrap ${
+                <span className={`mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold leading-none whitespace-nowrap ${
                   isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
                 }`}>
                   {area.name.length > 18 ? area.name.substring(0, 16) + "…" : area.name}
