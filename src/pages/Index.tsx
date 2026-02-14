@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Calendar, MapPin, ChevronRight, Eye, Sparkles } from "lucide-react";
 import AdminEditButton from "@/components/AdminEditButton";
+import NotificationBell from "@/components/NotificationBell";
 import logo from "@/assets/logo_white.png";
 import poster from "@/assets/poster.jpeg";
 
@@ -104,7 +105,10 @@ const Index = () => {
         <div className="relative z-10 px-5 pt-10 pb-14">
           <div className="flex items-center justify-between mb-6">
             <img src={logo} alt="Color Fest" className="h-8" />
-            <AdminEditButton tab="settings" />
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <AdminEditButton tab="settings" />
+            </div>
           </div>
           <p className="text-sm opacity-70 mb-1">{greeting} 👋</p>
           <h1 className="text-3xl font-black leading-tight">

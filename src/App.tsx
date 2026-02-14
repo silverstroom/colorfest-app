@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import BottomNav from "@/components/BottomNav";
 import RegistrationGate from "./components/RegistrationGate";
 import EventReminders from "./components/EventReminders";
@@ -27,21 +28,23 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <RegistrationGate />
-          <EventReminders />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/users" element={<UserManagement />} />
-            <Route path="/section/:id" element={<SectionDetail />} />
-            <Route path="/map" element={<FestivalMap />} />
-            <Route path="/my-program" element={<MyProgram />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <BottomNav />
+          <NotificationProvider>
+            <RegistrationGate />
+            <EventReminders />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/section/:id" element={<SectionDetail />} />
+              <Route path="/map" element={<FestivalMap />} />
+              <Route path="/my-program" element={<MyProgram />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <BottomNav />
+          </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
