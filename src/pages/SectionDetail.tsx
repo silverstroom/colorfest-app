@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/use-favorites";
-import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart, Eye } from "lucide-react";
+import { ArrowLeft, Clock, MapPin as MapPinIcon, Heart, Eye, Pencil } from "lucide-react";
+import AdminEditButton from "@/components/AdminEditButton";
 import { Button } from "@/components/ui/button";
 
 // Local artist images
@@ -135,7 +136,10 @@ const SectionDetail = () => {
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Indietro
         </Button>
-        <h1 className="text-3xl font-black">{section.name}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-black">{section.name}</h1>
+          <AdminEditButton tab="events" className="bg-white/10 text-white hover:bg-white/20" />
+        </div>
         <p className="text-primary-foreground/70 mt-1">{section.description}</p>
         <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 30" fill="none" preserveAspectRatio="none">
           <path d="M0,20 C360,40 720,0 1440,20 L1440,30 L0,30 Z" fill="hsl(43 100% 96%)" />

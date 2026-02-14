@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, ChevronRight, Users, Eye } from "lucide-react";
+import { Calendar, MapPin, ChevronRight, Eye, Sparkles } from "lucide-react";
+import AdminEditButton from "@/components/AdminEditButton";
 import logo from "@/assets/logo_white.png";
 import poster from "@/assets/poster.jpeg";
 
@@ -57,7 +58,7 @@ const getViewerCount = (eventId: string) => {
 };
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
@@ -88,13 +89,16 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Hero compact */}
+      {/* Hero */}
       <section className="relative overflow-hidden bg-primary text-primary-foreground">
         <div className="absolute inset-0 opacity-20">
           <img src={poster} alt="" className="w-full h-full object-cover" />
         </div>
         <div className="relative z-10 px-5 pt-10 pb-14">
-          <img src={logo} alt="Color Fest" className="h-8 mb-6" />
+          <div className="flex items-center justify-between mb-6">
+            <img src={logo} alt="Color Fest" className="h-8" />
+            <AdminEditButton tab="settings" />
+          </div>
           <p className="text-sm opacity-70 mb-1">{greeting} 👋</p>
           <h1 className="text-3xl font-black leading-tight">
             {settings.festival_name || "Color Fest XIV"}
@@ -114,29 +118,41 @@ const Index = () => {
         </svg>
       </section>
 
-      {/* Map card */}
-      <section className="px-4 -mt-5 relative z-20">
+      {/* Quick actions */}
+      <section className="px-4 -mt-5 relative z-20 flex gap-3">
         <button
           onClick={() => navigate("/map")}
-          className="w-full bg-secondary text-secondary-foreground rounded-2xl p-4 shadow-card flex items-center justify-between hover:shadow-elevated transition-shadow"
+          className="flex-1 bg-card text-foreground rounded-2xl p-4 shadow-card flex items-center gap-3 hover:shadow-elevated transition-shadow"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="text-left">
-              <p className="font-bold">Mappa Interattiva</p>
-              <p className="text-xs opacity-70">Esplora il festival</p>
-            </div>
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5 text-primary-foreground" />
           </div>
-          <ChevronRight className="w-5 h-5 opacity-50" />
+          <div className="text-left">
+            <p className="font-bold text-sm">Mappa</p>
+            <p className="text-[10px] text-muted-foreground">Esplora il festival</p>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate("/explore")}
+          className="flex-1 bg-card text-foreground rounded-2xl p-4 shadow-card flex items-center gap-3 hover:shadow-elevated transition-shadow"
+        >
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 text-secondary-foreground" />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-sm">Programma</p>
+            <p className="text-[10px] text-muted-foreground">Tutti gli eventi</p>
+          </div>
         </button>
       </section>
 
-      {/* Featured events - card style like reference */}
+      {/* Featured events */}
       {featuredEvents.length > 0 && (
         <section className="px-4 pt-6">
-          <h2 className="text-xl font-bold mb-4 text-foreground">In evidenza</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-foreground">In evidenza</h2>
+            <AdminEditButton tab="events" />
+          </div>
           <div className="space-y-3">
             {featuredEvents.filter(e => e.artist !== "TBA").slice(0, 4).map((event) => {
               const imgSrc = localImages[event.title] || localImages[event.artist] || event.image_url;
@@ -146,7 +162,7 @@ const Index = () => {
                 <button
                   key={event.id}
                   onClick={() => navigate(`/section/${event.section_id}`)}
-                  className="w-full bg-card rounded-2xl shadow-card flex items-center gap-0 overflow-hidden text-left hover:shadow-elevated transition-shadow"
+                  className="w-full bg-card rounded-2xl shadow-card flex items-center gap-0 overflow-hidden text-left hover:shadow-elevated transition-all active:scale-[0.98]"
                 >
                   <div className="flex-1 p-4 min-w-0">
                     <h3 className="font-bold text-foreground text-base leading-tight truncate">{event.title}</h3>
