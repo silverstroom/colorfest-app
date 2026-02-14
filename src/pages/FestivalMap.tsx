@@ -30,18 +30,29 @@ const stageColors: Record<string, string> = {
   "Marley Stage": "bg-amber-500",
 };
 
-const markerColors: Record<string, string> = {
-  Music: "bg-red-500",
-  Disc3: "bg-purple-500",
-  Guitar: "bg-amber-500",
-  Wine: "bg-violet-500",
-  UtensilsCrossed: "bg-orange-500",
-  Beer: "bg-amber-600",
-  Palette: "bg-pink-500",
-  ShoppingBag: "bg-teal-500",
-  Ticket: "bg-blue-500",
-  Bath: "bg-gray-500",
-  LogOut: "bg-gray-400",
+// Group map areas into zones for clarity
+type AreaZone = { label: string; color: string; borderColor: string; icons: string[] };
+const areaZones: AreaZone[] = [
+  { label: "🎵 Palchi", color: "bg-red-500", borderColor: "border-red-400", icons: ["Music", "Disc3", "Guitar"] },
+  { label: "🍽️ Food & Drink", color: "bg-orange-500", borderColor: "border-orange-400", icons: ["UtensilsCrossed", "Wine", "Beer"] },
+  { label: "🎨 Cultura", color: "bg-pink-500", borderColor: "border-pink-400", icons: ["Palette"] },
+  { label: "🛍️ Servizi", color: "bg-blue-500", borderColor: "border-blue-400", icons: ["ShoppingBag", "Ticket", "Bath", "LogOut"] },
+];
+
+const getZoneForIcon = (icon: string): AreaZone | undefined => areaZones.find(z => z.icons.includes(icon));
+
+const markerColorByIcon: Record<string, string> = {
+  Music: "bg-red-500 border-red-300",
+  Disc3: "bg-purple-500 border-purple-300",
+  Guitar: "bg-amber-500 border-amber-300",
+  Wine: "bg-violet-500 border-violet-300",
+  UtensilsCrossed: "bg-orange-500 border-orange-300",
+  Beer: "bg-amber-600 border-amber-300",
+  Palette: "bg-pink-500 border-pink-300",
+  ShoppingBag: "bg-teal-500 border-teal-300",
+  Ticket: "bg-blue-500 border-blue-300",
+  Bath: "bg-gray-500 border-gray-300",
+  LogOut: "bg-gray-400 border-gray-200",
 };
 
 const FestivalMap = () => {
@@ -51,6 +62,7 @@ const FestivalMap = () => {
   const [areas, setAreas] = useState<MapArea[]>([]);
   const [selectedArea, setSelectedArea] = useState<MapArea | null>(null);
   const [stageArtists, setStageArtists] = useState<StageArtist[]>([]);
+  const [activeZone, setActiveZone] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -69,7 +81,6 @@ const FestivalMap = () => {
     }
   }, [highlight, areas]);
 
-  // Group artists by stage
   const artistsByStage = stageArtists.reduce<Record<string, StageArtist[]>>((acc, a) => {
     if (!acc[a.stage]) acc[a.stage] = [];
     acc[a.stage].push(a);
@@ -77,9 +88,15 @@ const FestivalMap = () => {
   }, {});
 
   const dayLabels: Record<number, string> = { 1: "11 Ago", 2: "12 Ago", 3: "13 Ago" };
-
-  // Get artists for selected area (if it's a stage)
   const selectedStageArtists = selectedArea ? stageArtists.filter(a => a.stage === selectedArea.name) : [];
+
+  // Filter areas by active zone
+  const visibleAreas = activeZone
+    ? areas.filter(a => {
+        const zone = getZoneForIcon(a.icon);
+        return zone?.label === activeZone;
+      })
+    : areas;
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,8 +114,35 @@ const FestivalMap = () => {
         <p className="text-sm text-primary-foreground/70">Lungomare Falcone e Borsellino - Riviera dei Tramonti</p>
       </div>
 
+      {/* Zone filter chips */}
+      <div className="px-4 pt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => setActiveZone(null)}
+          className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+            activeZone === null
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-muted-foreground shadow-card"
+          }`}
+        >
+          Tutto
+        </button>
+        {areaZones.map(zone => (
+          <button
+            key={zone.label}
+            onClick={() => setActiveZone(activeZone === zone.label ? null : zone.label)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              activeZone === zone.label
+                ? "bg-primary text-primary-foreground"
+                : "bg-card text-muted-foreground shadow-card"
+            }`}
+          >
+            {zone.label}
+          </button>
+        ))}
+      </div>
+
       {/* Map Container */}
-      <div className="relative mx-4 mt-4 bg-card rounded-xl shadow-elevated overflow-hidden">
+      <div className="relative mx-4 mt-3 bg-card rounded-xl shadow-elevated overflow-hidden">
         <img
           src={mapImage}
           alt="Mappa Color Fest"
@@ -107,31 +151,42 @@ const FestivalMap = () => {
 
         {/* Interactive markers overlay */}
         {areas.map((area) => {
-          const color = markerColors[area.icon] || "bg-primary";
+          const colors = markerColorByIcon[area.icon] || "bg-primary border-primary/50";
+          const isVisible = !activeZone || visibleAreas.some(a => a.id === area.id);
+          const isSelected = selectedArea?.id === area.id;
+          const isStage = Object.keys(stageColors).includes(area.name);
+
           return (
             <button
               key={area.id}
               onClick={() => setSelectedArea(area)}
-              className={`absolute flex items-center justify-center transition-all duration-300 ${
-                selectedArea?.id === area.id
-                  ? "scale-150 z-20"
-                  : "hover:scale-125 z-10"
-              }`}
+              className={`absolute flex flex-col items-center transition-all duration-300 ${
+                isVisible ? "opacity-100" : "opacity-20 pointer-events-none"
+              } ${isSelected ? "scale-125 z-20" : "hover:scale-110 z-10"}`}
               style={{
                 left: `${area.x_percent}%`,
                 top: `${area.y_percent}%`,
-                transform: "translate(-50%, -50%)",
+                transform: "translate(-50%, -100%)",
               }}
             >
+              {/* Pin shape */}
               <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white ${
-                  selectedArea?.id === area.id
-                    ? `${color} text-white animate-pulse-glow`
-                    : `${color} text-white`
-                }`}
+                className={`flex items-center justify-center shadow-lg border-2 ${colors} ${
+                  isSelected ? "animate-pulse-glow" : ""
+                } ${isStage ? "w-8 h-8 rounded-lg" : "w-6 h-6 rounded-full"}`}
               >
-                {area.name.charAt(0)}
+                <span className="text-white text-[9px] font-black leading-none">
+                  {isStage ? "♪" : area.name.charAt(0)}
+                </span>
               </span>
+              {/* Label - always visible for stages, on select for others */}
+              {(isStage || isSelected) && (
+                <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold leading-none whitespace-nowrap ${
+                  isStage ? "bg-foreground/80 text-background" : "bg-card/90 text-foreground shadow-sm"
+                }`}>
+                  {area.name.length > 18 ? area.name.substring(0, 16) + "…" : area.name}
+                </span>
+              )}
             </button>
           );
         })}
@@ -149,7 +204,6 @@ const FestivalMap = () => {
           <h3 className="font-bold text-lg text-foreground">{selectedArea.name}</h3>
           <p className="text-sm text-muted-foreground mt-1">{selectedArea.description}</p>
 
-          {/* Show artists playing at this stage */}
           {selectedStageArtists.length > 0 && (
             <div className="mt-3 space-y-1">
               <p className="text-xs font-semibold text-primary uppercase tracking-wide">Line-up</p>
@@ -200,23 +254,34 @@ const FestivalMap = () => {
           })}
         </div>
 
-        {/* POI list */}
+        {/* POI list grouped by zone */}
         <h2 className="text-lg font-bold mt-6 mb-3">Punti di interesse</h2>
-        <div className="space-y-2">
-          {areas.filter(a => !Object.keys(stageColors).includes(a.name)).map((area) => (
-            <button
-              key={area.id}
-              onClick={() => setSelectedArea(area)}
-              className={`w-full text-left p-3 rounded-lg transition-colors ${
-                selectedArea?.id === area.id
-                  ? "bg-primary/10 border-l-4 border-primary"
-                  : "bg-card shadow-card hover:bg-muted"
-              }`}
-            >
-              <p className="font-semibold text-foreground">{area.name}</p>
-              <p className="text-xs text-muted-foreground">{area.description}</p>
-            </button>
-          ))}
+        <div className="space-y-4">
+          {areaZones.filter(z => z.label !== "🎵 Palchi").map(zone => {
+            const zoneAreas = areas.filter(a => zone.icons.includes(a.icon) && !Object.keys(stageColors).includes(a.name));
+            if (zoneAreas.length === 0) return null;
+            return (
+              <div key={zone.label}>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{zone.label}</p>
+                <div className="space-y-2">
+                  {zoneAreas.map((area) => (
+                    <button
+                      key={area.id}
+                      onClick={() => setSelectedArea(area)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        selectedArea?.id === area.id
+                          ? "bg-primary/10 border-l-4 border-primary"
+                          : "bg-card shadow-card hover:bg-muted"
+                      }`}
+                    >
+                      <p className="font-semibold text-foreground">{area.name}</p>
+                      <p className="text-xs text-muted-foreground">{area.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
