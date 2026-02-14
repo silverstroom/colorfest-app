@@ -127,28 +127,9 @@ const SectionDetail = () => {
         </svg>
       </div>
 
-      {/* Day selector */}
-      {events.length > 0 && events.some(e => e.day) && (
-        <div className="px-4 pt-4 flex gap-2">
-          {days.map((day, i) => (
-            <button
-              key={day}
-              onClick={() => setSelectedDay(day)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
-                selectedDay === day
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground shadow-card"
-              }`}
-            >
-              {dayLabels[i]}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Stage filter (only for Concerti) */}
+      {/* Stage filter (only for Concerti) - replaces legend */}
       {isConcerti && stages.length > 0 && (
-        <div className="px-4 pt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="px-4 pt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedStage(null)}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
@@ -179,7 +160,25 @@ const SectionDetail = () => {
         </div>
       )}
 
-      {/* Events */}
+      {/* Day selector */}
+      {events.length > 0 && events.some(e => e.day) && (
+        <div className="px-4 pt-3 flex gap-2">
+          {days.map((day, i) => (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                selectedDay === day
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground shadow-card"
+              }`}
+            >
+              {dayLabels[i]}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="px-4 py-6 space-y-5">
         {filteredEvents.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
